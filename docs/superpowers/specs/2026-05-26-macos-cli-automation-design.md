@@ -360,6 +360,43 @@ cd MacOS && git pull && swift build -c release
 cp .build/release/macos /usr/local/bin/macos
 ```
 
+## 多屏幕兼容
+
+### 坐标系
+
+macOS 使用全局坐标系（Global Display Coordinate Space），多屏幕场景下：
+
+- **主屏幕**左上角为原点 `(0, 0)`
+- **副屏幕在右侧**：坐标从主屏宽度开始，如 `(1920, 0)` ~ `(3840, 1080)`
+- **副屏幕在左侧**：坐标为负值，如 `(-1920, 0)` ~ `(0, 1080)`
+- **副屏幕在上方/下方**：Y 轴相应偏移
+
+### 各功能兼容情况
+
+| 功能 | 多屏兼容 | 说明 |
+|------|---------|------|
+| `click --coords` | ✅ 完整支持 | CGEvent 使用全局坐标，可点击任意屏幕上的任意位置 |
+| `see / inspect` | ✅ 完整支持 | AX 元素的 `frame` 返回全局坐标，已包含屏幕偏移 |
+| `scroll` | ✅ 完整支持 | 滚动事件发送到鼠标当前位置，不依赖屏幕索引 |
+| `type / hotkey` | ✅ 完整支持 | 键盘事件与屏幕无关 |
+| `see --screenshot`（窗口截图） | ✅ 完整支持 | 按窗口截图，不受所在屏幕影响 |
+| `captureScreen`（全屏截图） | ⚠️ 仅主屏 | 当前只截取 `displays.first`（主屏），不支持指定副屏 |
+
+### 使用示例
+
+```bash
+# 副屏幕上的应用（坐标超出主屏范围）
+macos click --coords 2200,500    # 点击右侧副屏 (1920+280, 500)
+macos click --coords -500,300    # 点击左侧副屏
+
+# see 返回的 frame 已包含屏幕偏移
+# 例如副屏上的元素：frame: {x: 2100, y: 200, w: 100, h: 30}
+```
+
+### 已知限制
+
+- 全屏截图（`captureScreen`）目前仅截取主屏幕，后续可通过 `--display` 参数扩展
+
 ## 风险与限制
 
 1. **权限授予**：首次使用需手动授权辅助功能和屏幕录制，无法自动化
@@ -367,3 +404,4 @@ cp .build/release/macos /usr/local/bin/macos
 3. **UI 变化**：执行操作后 UI 可能改变，Agent 需重新 `see` 获取最新元素
 4. **CGEvent 限制**：需要进程有 kTCCServiceAccessibility 权限
 5. **ScreenCaptureKit 权限**：首次截图会触发系统权限弹窗
+6. **多屏幕**：全屏截图仅主屏（窗口截图不受影响）
