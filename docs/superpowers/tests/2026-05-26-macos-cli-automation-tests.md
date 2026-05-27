@@ -16,14 +16,17 @@
 
 > 源文件：`Sources/MacOS/Commands/AppCommand.swift`
 
-**参数说明：**
-| 参数 | 含义 |
-|------|------|
-| `--action` | 操作类型：`launch`(启动) / `quit`(退出) / `focus`(聚焦) / `list`(列表) |
-| `--name` | 目标应用名称（如 TextEdit、Finder） |
-| `--force` | 强制退出（不弹保存对话框） |
-| `--wait` | 等待应用启动完成（~2秒延迟） |
-| `--human` | 人类可读格式输出（否则输出 JSON） |
+**参数说明与测试命令：**
+| 参数 | 含义 | 测试命令 |
+|------|------|---------|
+| `--action list` | 列出所有运行中 GUI 应用 | `swift run macos app --action list` |
+| `--action launch` | 启动指定应用 | `swift run macos app --action launch --name TextEdit` |
+| `--action quit` | 正常退出应用 | `swift run macos app --action quit --name TextEdit` |
+| `--action focus` | 聚焦应用到前台 | `swift run macos app --action focus --name Finder` |
+| `--name` | 目标应用名称 | `swift run macos app --action focus --name Finder` |
+| `--force` | 强制退出（跳过保存对话框） | `swift run macos app --action quit --name TextEdit --force` |
+| `--wait` | 等待应用启动完成（~2秒） | `swift run macos app --action launch --name TextEdit --wait` |
+| `--human` | 人类可读格式输出 | `swift run macos app --action list --human` |
 
 ### test_app_list
 
@@ -102,14 +105,14 @@ swift run macos app --action focus --name NonExistentApp123
 
 > 源文件：`Sources/MacOS/Commands/SeeCommand.swift`
 
-**参数说明：**
-| 参数 | 含义 |
-|------|------|
-| `--app` | 目标应用名（省略则使用当前前台应用） |
-| `--screenshot` | 截图保存路径（如 `/tmp/shot.png`） |
-| `--annotate` | 在截图上标注元素 ID（搭配 --screenshot） |
-| `--max-depth` | AX 树遍历最大深度（默认 10） |
-| `--human` | 人类可读格式输出 |
+**参数说明与测试命令：**
+| 参数 | 含义 | 测试命令 |
+|------|------|---------|
+| `--app` | 目标应用名（省略=前台应用） | `swift run macos see --app Finder` |
+| `--screenshot` | 截图保存路径 | `swift run macos see --app Finder --screenshot /tmp/see.png` |
+| `--annotate` | 截图上标注元素 ID | `swift run macos see --app Finder --screenshot /tmp/see.png --annotate` |
+| `--max-depth` | AX 树遍历深度（默认 10） | `swift run macos see --app Finder --max-depth 3` |
+| `--human` | 人类可读格式输出 | `swift run macos see --app Finder --human` |
 
 ### test_see_human
 
@@ -169,12 +172,12 @@ swift run macos see --app Finder --max-depth 2 --human
 
 > 源文件：`Sources/MacOS/Commands/InspectCommand.swift`
 
-**参数说明：**
-| 参数 | 含义 |
-|------|------|
-| `--app` | 目标应用名（省略则使用当前前台应用） |
-| `--max-depth` | 树输出最大深度（默认 5） |
-| `--human` | 缩进树形文本输出（否则 JSON） |
+**参数说明与测试命令：**
+| 参数 | 含义 | 测试命令 |
+|------|------|---------|
+| `--app` | 目标应用名（省略=前台应用） | `swift run macos inspect --app Finder` |
+| `--max-depth` | 树最大深度（默认 5） | `swift run macos inspect --app Finder --max-depth 3` |
+| `--human` | 缩进树形文本输出 | `swift run macos inspect --app Finder --human` |
 
 ### test_inspect_human
 
@@ -204,14 +207,14 @@ swift run macos inspect --app Finder --max-depth 2
 
 > 源文件：`Sources/MacOS/Commands/ClickCommand.swift`
 
-**参数说明：**
-| 参数 | 含义 |
-|------|------|
-| `--coords` | 点击坐标，格式 `x,y`（屏幕绝对坐标） |
-| `--query` | 按文本内容实时查找元素并点击其中心 |
-| `--app` | 查找元素的应用范围（搭配 --query） |
-| `--double` | 双击 |
-| `--right` | 右键点击 |
+**参数说明与测试命令：**
+| 参数 | 含义 | 测试命令 |
+|------|------|---------|
+| `--coords` | 点击坐标，格式 `x,y` | `swift run macos click --coords 400,300` |
+| `--query` | 按文本查找元素并点击中心 | `swift run macos click --query "关闭" --app Finder` |
+| `--app` | query 查找范围（应用名） | `swift run macos click --query "关闭" --app Finder` |
+| `--double` | 双击 | `swift run macos click --coords 400,300 --double` |
+| `--right` | 右键点击 | `swift run macos click --coords 400,300 --right` |
 
 ### test_click_coords
 
@@ -267,14 +270,14 @@ swift run macos click --coords 400,300 --right
 
 > 源文件：`Sources/MacOS/Commands/TypeCommand.swift`
 
-**参数说明：**
-| 参数 | 含义 |
-|------|------|
-| `--text` | 要输入的文本内容 |
-| `--coords` | 先点击此坐标聚焦目标（格式 `x,y`） |
-| `--clear` | 输入前先清空字段（Cmd+A → Delete） |
-| `--press-return` | 输入完成后按回车键 |
-| `--delay` | 按键间隔（毫秒，默认 5） |
+**参数说明与测试命令：**
+| 参数 | 含义 | 测试命令 |
+|------|------|---------|
+| `--text` | 要输入的文本内容 | `swift run macos type --text "Hello"` |
+| `--coords` | 先点击坐标聚焦（格式 `x,y`） | `swift run macos type --text "Hi" --coords 400,300` |
+| `--clear` | 输入前清空字段（Cmd+A→Delete） | `swift run macos type --text "New" --clear` |
+| `--press-return` | 输入后按回车键 | `swift run macos type --text "Line" --press-return` |
+| `--delay` | 按键间隔毫秒（默认 5） | `swift run macos type --text "Slow" --delay 50` |
 
 ### test_type_text
 
@@ -331,10 +334,15 @@ swift run macos type --text "Line" --press-return
 
 > 源文件：`Sources/MacOS/Commands/HotkeyCommand.swift`
 
-**参数说明：**
-| 参数 | 含义 |
-|------|------|
-| `--keys` | 逗号分隔的按键组合。修饰键：`cmd`/`shift`/`alt`(option)/`ctrl`/`fn`；主键：字母/数字/`space`/`return`/`tab`/`escape`/`f1`~`f12`/`arrow_up`等 |
+**参数说明与测试命令：**
+| 参数 | 含义 | 测试命令 |
+|------|------|---------|
+| `--keys` (单修饰键) | `cmd` + 主键 | `swift run macos hotkey --keys cmd,c` |
+| `--keys` (多修饰键) | `cmd,shift` + 主键 | `swift run macos hotkey --keys cmd,shift,t` |
+| `--keys` (alt) | `alt`(option) 修饰键 | `swift run macos hotkey --keys alt,f4` |
+| `--keys` (ctrl) | `ctrl` 修饰键 | `swift run macos hotkey --keys ctrl,c` |
+| `--keys` (功能键) | F1~F12 功能键 | `swift run macos hotkey --keys f5` |
+| `--keys` (方向键) | arrow_up/down/left/right | `swift run macos hotkey --keys cmd,arrow_up` |
 
 ### test_hotkey_single
 
@@ -380,12 +388,15 @@ swift run macos hotkey --keys cmd,xyz
 
 > 源文件：`Sources/MacOS/Commands/ScrollCommand.swift`
 
-**参数说明：**
-| 参数 | 含义 |
-|------|------|
-| `--direction` | 滚动方向：`up`/`down`/`left`/`right` |
-| `--amount` | 滚动行数（默认 3） |
-| `--coords` | 在指定坐标滚动（格式 `x,y`，先移动鼠标） |
+**参数说明与测试命令：**
+| 参数 | 含义 | 测试命令 |
+|------|------|---------|
+| `--direction up` | 向上滚动 | `swift run macos scroll --direction up` |
+| `--direction down` | 向下滚动 | `swift run macos scroll --direction down` |
+| `--direction left` | 向左滚动 | `swift run macos scroll --direction left` |
+| `--direction right` | 向右滚动 | `swift run macos scroll --direction right` |
+| `--amount` | 滚动行数（默认 3） | `swift run macos scroll --direction down --amount 10` |
+| `--coords` | 在指定坐标滚动 | `swift run macos scroll --direction down --coords 400,300` |
 
 ### test_scroll_down
 
@@ -417,14 +428,20 @@ swift run macos scroll --direction up --amount 3 --coords 400,300
 
 > 源文件：`Sources/MacOS/Commands/WindowCommand.swift`
 
-**参数说明：**
-| 参数 | 含义 |
-|------|------|
-| `--action` | 操作类型：`move`/`resize`/`close`/`minimize`/`maximize`/`focus`/`list` |
-| `--app` | 目标应用名 |
-| `--title` | 窗口标题（部分匹配，用于多窗口时选择） |
-| `--x` / `--y` | 窗口新位置坐标（搭配 move） |
-| `--width` / `--height` | 窗口新尺寸（搭配 resize） |
+**参数说明与测试命令：**
+| 参数 | 含义 | 测试命令 |
+|------|------|---------|
+| `--action list` | 列出应用窗口 | `swift run macos window --action list --app Finder` |
+| `--action move` | 移动窗口 | `swift run macos window --action move --app TextEdit --x 100 --y 100` |
+| `--action resize` | 缩放窗口 | `swift run macos window --action resize --app TextEdit --width 800 --height 600` |
+| `--action close` | 关闭窗口 | `swift run macos window --action close --app TextEdit` |
+| `--action minimize` | 最小化窗口 | `swift run macos window --action minimize --app TextEdit` |
+| `--action maximize` | 最大化窗口 | `swift run macos window --action maximize --app TextEdit` |
+| `--action focus` | 聚焦窗口 | `swift run macos window --action focus --app TextEdit` |
+| `--app` | 目标应用名 | `swift run macos window --action list --app Finder` |
+| `--title` | 按窗口标题匹配 | `swift run macos window --action focus --app TextEdit --title "未命名"` |
+| `--x` / `--y` | 窗口新位置坐标 | `swift run macos window --action move --app TextEdit --x 200 --y 200` |
+| `--width` / `--height` | 窗口新尺寸 | `swift run macos window --action resize --app TextEdit --width 1024 --height 768` |
 
 ### test_window_list
 
@@ -490,12 +507,13 @@ swift run macos window --action close --app TextEdit
 
 > 源文件：`Sources/MacOS/Commands/MenuCommand.swift`
 
-**参数说明：**
-| 参数 | 含义 |
-|------|------|
-| `--action` | 操作类型：`list`(列出菜单) / `click`(点击菜单项) |
-| `--app` | 目标应用名 |
-| `--path` | 菜单路径，`>` 分隔层级（如 `"File > Save"`） |
+**参数说明与测试命令：**
+| 参数 | 含义 | 测试命令 |
+|------|------|---------|
+| `--action list` | 列出所有菜单项 | `swift run macos menu --action list --app Finder` |
+| `--action click` | 点击指定菜单项 | `swift run macos menu --action click --app Finder --path "File > New Finder Window"` |
+| `--app` | 目标应用名 | `swift run macos menu --action list --app TextEdit` |
+| `--path` | 菜单路径（`>` 分隔） | `swift run macos menu --action click --app TextEdit --path "Format > Font > Bold"` |
 
 ### test_menu_list
 
@@ -525,11 +543,13 @@ swift run macos menu --action click --app Finder --path "File > New Finder Windo
 
 > 源文件：`Sources/MacOS/Commands/ClipboardCommand.swift`
 
-**参数说明：**
-| 参数 | 含义 |
-|------|------|
-| `--action` | 操作类型：`get`(读取) / `set`(写入) / `clear`(清空) |
-| `--text` | 要写入剪贴板的文本（搭配 `--action set`） |
+**参数说明与测试命令：**
+| 参数 | 含义 | 测试命令 |
+|------|------|---------|
+| `--action get` | 读取剪贴板内容 | `swift run macos clipboard --action get` |
+| `--action set` | 写入文本到剪贴板 | `swift run macos clipboard --action set --text "hello"` |
+| `--action clear` | 清空剪贴板 | `swift run macos clipboard --action clear` |
+| `--text` | 要写入的文本内容 | `swift run macos clipboard --action set --text "测试内容"` |
 
 ### test_clipboard_set
 
