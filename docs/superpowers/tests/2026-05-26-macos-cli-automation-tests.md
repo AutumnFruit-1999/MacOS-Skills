@@ -17,16 +17,19 @@
 > 源文件：`Sources/MacOS/Commands/AppCommand.swift`
 
 **参数说明与测试命令：**
-| 参数 | 含义 | 测试命令 |
-|------|------|---------|
-| `--action list` | 列出所有运行中 GUI 应用 | `swift run macos app --action list` |
-| `--action launch` | 启动指定应用 | `swift run macos app --action launch --name TextEdit` |
-| `--action quit` | 正常退出应用 | `swift run macos app --action quit --name TextEdit` |
-| `--action focus` | 聚焦应用到前台 | `swift run macos app --action focus --name Finder` |
-| `--name` | 目标应用名称 | `swift run macos app --action focus --name Finder` |
-| `--force` | 强制退出（跳过保存对话框） | `swift run macos app --action quit --name TextEdit --force` |
-| `--wait` | 等待应用启动完成（~2秒） | `swift run macos app --action launch --name TextEdit --wait` |
-| `--human` | 人类可读格式输出 | `swift run macos app --action list --human` |
+
+
+| 参数                | 含义             | 测试命令                                                         |
+| ----------------- | -------------- | ------------------------------------------------------------ |
+| `--action list`   | 列出所有运行中 GUI 应用 | `swift run macos app --action list`                          |
+| `--action launch` | 启动指定应用         | `swift run macos app --action launch --name TextEdit`        |
+| `--action quit`   | 正常退出应用         | `swift run macos app --action quit --name TextEdit`          |
+| `--action focus`  | 聚焦应用到前台        | `swift run macos app --action focus --name Finder`           |
+| `--name`          | 目标应用名称         | `swift run macos app --action focus --name Finder`           |
+| `--force`         | 强制退出（跳过保存对话框）  | `swift run macos app --action quit --name TextEdit --force`  |
+| `--wait`          | 等待应用启动完成（~2秒）  | `swift run macos app --action launch --name TextEdit --wait` |
+| `--human`         | 人类可读格式输出       | `swift run macos app --action list --human`                  |
+
 
 ### test_app_list
 
@@ -106,13 +109,16 @@ swift run macos app --action focus --name NonExistentApp123
 > 源文件：`Sources/MacOS/Commands/SeeCommand.swift`
 
 **参数说明与测试命令：**
-| 参数 | 含义 | 测试命令 |
-|------|------|---------|
-| `--app` | 目标应用名（省略=前台应用） | `swift run macos see --app Finder` |
-| `--screenshot` | 截图保存路径 | `swift run macos see --app Finder --screenshot /tmp/see.png` |
-| `--annotate` | 截图上标注元素 ID | `swift run macos see --app Finder --screenshot /tmp/see.png --annotate` |
-| `--max-depth` | AX 树遍历深度（默认 10） | `swift run macos see --app Finder --max-depth 3` |
-| `--human` | 人类可读格式输出 | `swift run macos see --app Finder --human` |
+
+
+| 参数             | 含义              | 测试命令                                                                    |
+| -------------- | --------------- | ----------------------------------------------------------------------- |
+| `--app`        | 目标应用名（省略=前台应用）  | `swift run macos see --app Finder`                                      |
+| `--screenshot` | 截图保存路径          | `swift run macos see --app Finder --screenshot /tmp/see.png`            |
+| `--annotate`   | 截图上标注元素 ID      | `swift run macos see --app Finder --screenshot /tmp/see.png --annotate` |
+| `--max-depth`  | AX 树遍历深度（默认 10） | `swift run macos see --app Finder --max-depth 3`                        |
+| `--human`      | 人类可读格式输出        | `swift run macos see --app Finder --human`                              |
+
 
 ### test_see_human
 
@@ -149,9 +155,11 @@ swift run macos see --app Finder --screenshot /tmp/test-see.png
 ```
 
 **验证：**
+
 ```bash
 file /tmp/test-see.png
 ```
+
 **预期：** `PNG image data`。
 
 ---
@@ -173,11 +181,14 @@ swift run macos see --app Finder --max-depth 2 --human
 > 源文件：`Sources/MacOS/Commands/InspectCommand.swift`
 
 **参数说明与测试命令：**
-| 参数 | 含义 | 测试命令 |
-|------|------|---------|
-| `--app` | 目标应用名（省略=前台应用） | `swift run macos inspect --app Finder` |
-| `--max-depth` | 树最大深度（默认 5） | `swift run macos inspect --app Finder --max-depth 3` |
-| `--human` | 缩进树形文本输出 | `swift run macos inspect --app Finder --human` |
+
+
+| 参数            | 含义             | 测试命令                                                 |
+| ------------- | -------------- | ---------------------------------------------------- |
+| `--app`       | 目标应用名（省略=前台应用） | `swift run macos inspect --app Finder`               |
+| `--max-depth` | 树最大深度（默认 5）    | `swift run macos inspect --app Finder --max-depth 3` |
+| `--human`     | 缩进树形文本输出       | `swift run macos inspect --app Finder --human`       |
+
 
 ### test_inspect_human
 
@@ -208,13 +219,16 @@ swift run macos inspect --app Finder --max-depth 2
 > 源文件：`Sources/MacOS/Commands/ClickCommand.swift`
 
 **参数说明与测试命令：**
-| 参数 | 含义 | 测试命令 |
-|------|------|---------|
-| `--coords` | 点击坐标，格式 `x,y` | `swift run macos click --coords 400,300` |
-| `--query` | 按文本查找元素并点击中心 | `swift run macos click --query "关闭" --app Finder` |
-| `--app` | query 查找范围（应用名） | `swift run macos click --query "关闭" --app Finder` |
-| `--double` | 双击 | `swift run macos click --coords 400,300 --double` |
-| `--right` | 右键点击 | `swift run macos click --coords 400,300 --right` |
+
+
+| 参数         | 含义              | 测试命令                                              |
+| ---------- | --------------- | ------------------------------------------------- |
+| `--coords` | 点击坐标，格式 `x,y`   | `swift run macos click --coords 400,300`          |
+| `--query`  | 按文本查找元素并点击中心    | `swift run macos click --query "关闭" --app Finder` |
+| `--app`    | query 查找范围（应用名） | `swift run macos click --query "关闭" --app Finder` |
+| `--double` | 双击              | `swift run macos click --coords 400,300 --double` |
+| `--right`  | 右键点击            | `swift run macos click --coords 400,300 --right`  |
+
 
 ### test_click_coords
 
@@ -271,13 +285,16 @@ swift run macos click --coords 400,300 --right
 > 源文件：`Sources/MacOS/Commands/TypeCommand.swift`
 
 **参数说明与测试命令：**
-| 参数 | 含义 | 测试命令 |
-|------|------|---------|
-| `--text` | 要输入的文本内容 | `swift run macos type --text "Hello"` |
-| `--coords` | 先点击坐标聚焦（格式 `x,y`） | `swift run macos type --text "Hi" --coords 400,300` |
-| `--clear` | 输入前清空字段（Cmd+A→Delete） | `swift run macos type --text "New" --clear` |
-| `--press-return` | 输入后按回车键 | `swift run macos type --text "Line" --press-return` |
-| `--delay` | 按键间隔毫秒（默认 5） | `swift run macos type --text "Slow" --delay 50` |
+
+
+| 参数               | 含义                    | 测试命令                                                |
+| ---------------- | --------------------- | --------------------------------------------------- |
+| `--text`         | 要输入的文本内容              | `swift run macos type --text "Hello"`               |
+| `--coords`       | 先点击坐标聚焦（格式 `x,y`）     | `swift run macos type --text "Hi" --coords 400,300` |
+| `--clear`        | 输入前清空字段（Cmd+A→Delete） | `swift run macos type --text "New" --clear`         |
+| `--press-return` | 输入后按回车键               | `swift run macos type --text "Line" --press-return` |
+| `--delay`        | 按键间隔毫秒（默认 5）          | `swift run macos type --text "Slow" --delay 50`     |
+
 
 ### test_type_text
 
@@ -335,14 +352,17 @@ swift run macos type --text "Line" --press-return
 > 源文件：`Sources/MacOS/Commands/HotkeyCommand.swift`
 
 **参数说明与测试命令：**
-| 参数 | 含义 | 测试命令 |
-|------|------|---------|
-| `--keys` (单修饰键) | `cmd` + 主键 | `swift run macos hotkey --keys cmd,c` |
-| `--keys` (多修饰键) | `cmd,shift` + 主键 | `swift run macos hotkey --keys cmd,shift,t` |
-| `--keys` (alt) | `alt`(option) 修饰键 | `swift run macos hotkey --keys alt,f4` |
-| `--keys` (ctrl) | `ctrl` 修饰键 | `swift run macos hotkey --keys ctrl,c` |
-| `--keys` (功能键) | F1~F12 功能键 | `swift run macos hotkey --keys f5` |
-| `--keys` (方向键) | arrow_up/down/left/right | `swift run macos hotkey --keys cmd,arrow_up` |
+
+
+| 参数              | 含义                       | 测试命令                                         |
+| --------------- | ------------------------ | -------------------------------------------- |
+| `--keys` (单修饰键) | `cmd` + 主键               | `swift run macos hotkey --keys cmd,c`        |
+| `--keys` (多修饰键) | `cmd,shift` + 主键         | `swift run macos hotkey --keys cmd,shift,t`  |
+| `--keys` (alt)  | `alt`(option) 修饰键        | `swift run macos hotkey --keys alt,f4`       |
+| `--keys` (ctrl) | `ctrl` 修饰键               | `swift run macos hotkey --keys ctrl,c`       |
+| `--keys` (功能键)  | F1~F12 功能键               | `swift run macos hotkey --keys f5`           |
+| `--keys` (方向键)  | arrow_up/down/left/right | `swift run macos hotkey --keys cmd,arrow_up` |
+
 
 ### test_hotkey_single
 
@@ -389,14 +409,17 @@ swift run macos hotkey --keys cmd,xyz
 > 源文件：`Sources/MacOS/Commands/ScrollCommand.swift`
 
 **参数说明与测试命令：**
-| 参数 | 含义 | 测试命令 |
-|------|------|---------|
-| `--direction up` | 向上滚动 | `swift run macos scroll --direction up` |
-| `--direction down` | 向下滚动 | `swift run macos scroll --direction down` |
-| `--direction left` | 向左滚动 | `swift run macos scroll --direction left` |
-| `--direction right` | 向右滚动 | `swift run macos scroll --direction right` |
-| `--amount` | 滚动行数（默认 3） | `swift run macos scroll --direction down --amount 10` |
-| `--coords` | 在指定坐标滚动 | `swift run macos scroll --direction down --coords 400,300` |
+
+
+| 参数                  | 含义         | 测试命令                                                       |
+| ------------------- | ---------- | ---------------------------------------------------------- |
+| `--direction up`    | 向上滚动       | `swift run macos scroll --direction up`                    |
+| `--direction down`  | 向下滚动       | `swift run macos scroll --direction down`                  |
+| `--direction left`  | 向左滚动       | `swift run macos scroll --direction left`                  |
+| `--direction right` | 向右滚动       | `swift run macos scroll --direction right`                 |
+| `--amount`          | 滚动行数（默认 3） | `swift run macos scroll --direction down --amount 10`      |
+| `--coords`          | 在指定坐标滚动    | `swift run macos scroll --direction down --coords 400,300` |
+
 
 ### test_scroll_down
 
@@ -429,19 +452,22 @@ swift run macos scroll --direction up --amount 3 --coords 400,300
 > 源文件：`Sources/MacOS/Commands/WindowCommand.swift`
 
 **参数说明与测试命令：**
-| 参数 | 含义 | 测试命令 |
-|------|------|---------|
-| `--action list` | 列出应用窗口 | `swift run macos window --action list --app Finder` |
-| `--action move` | 移动窗口 | `swift run macos window --action move --app TextEdit --x 100 --y 100` |
-| `--action resize` | 缩放窗口 | `swift run macos window --action resize --app TextEdit --width 800 --height 600` |
-| `--action close` | 关闭窗口 | `swift run macos window --action close --app TextEdit` |
-| `--action minimize` | 最小化窗口 | `swift run macos window --action minimize --app TextEdit` |
-| `--action maximize` | 最大化窗口 | `swift run macos window --action maximize --app TextEdit` |
-| `--action focus` | 聚焦窗口 | `swift run macos window --action focus --app TextEdit` |
-| `--app` | 目标应用名 | `swift run macos window --action list --app Finder` |
-| `--title` | 按窗口标题匹配 | `swift run macos window --action focus --app TextEdit --title "未命名"` |
-| `--x` / `--y` | 窗口新位置坐标 | `swift run macos window --action move --app TextEdit --x 200 --y 200` |
-| `--width` / `--height` | 窗口新尺寸 | `swift run macos window --action resize --app TextEdit --width 1024 --height 768` |
+
+
+| 参数                     | 含义      | 测试命令                                                                              |
+| ---------------------- | ------- | --------------------------------------------------------------------------------- |
+| `--action list`        | 列出应用窗口  | `swift run macos window --action list --app Finder`                               |
+| `--action move`        | 移动窗口    | `swift run macos window --action move --app TextEdit --x 100 --y 100`             |
+| `--action resize`      | 缩放窗口    | `swift run macos window --action resize --app TextEdit --width 800 --height 600`  |
+| `--action close`       | 关闭窗口    | `swift run macos window --action close --app TextEdit`                            |
+| `--action minimize`    | 最小化窗口   | `swift run macos window --action minimize --app TextEdit`                         |
+| `--action maximize`    | 最大化窗口   | `swift run macos window --action maximize --app TextEdit`                         |
+| `--action focus`       | 聚焦窗口    | `swift run macos window --action focus --app TextEdit`                            |
+| `--app`                | 目标应用名   | `swift run macos window --action list --app Finder`                               |
+| `--title`              | 按窗口标题匹配 | `swift run macos window --action focus --app TextEdit --title "未命名"`              |
+| `--x` / `--y`          | 窗口新位置坐标 | `swift run macos window --action move --app TextEdit --x 200 --y 200`             |
+| `--width` / `--height` | 窗口新尺寸   | `swift run macos window --action resize --app TextEdit --width 1024 --height 768` |
+
 
 ### test_window_list
 
@@ -508,12 +534,15 @@ swift run macos window --action close --app TextEdit
 > 源文件：`Sources/MacOS/Commands/MenuCommand.swift`
 
 **参数说明与测试命令：**
-| 参数 | 含义 | 测试命令 |
-|------|------|---------|
-| `--action list` | 列出所有菜单项 | `swift run macos menu --action list --app Finder` |
-| `--action click` | 点击指定菜单项 | `swift run macos menu --action click --app Finder --path "File > New Finder Window"` |
-| `--app` | 目标应用名 | `swift run macos menu --action list --app TextEdit` |
-| `--path` | 菜单路径（`>` 分隔） | `swift run macos menu --action click --app TextEdit --path "Format > Font > Bold"` |
+
+
+| 参数               | 含义           | 测试命令                                                                                 |
+| ---------------- | ------------ | ------------------------------------------------------------------------------------ |
+| `--action list`  | 列出所有菜单项      | `swift run macos menu --action list --app Finder`                                    |
+| `--action click` | 点击指定菜单项      | `swift run macos menu --action click --app Finder --path "File > New Finder Window"` |
+| `--app`          | 目标应用名        | `swift run macos menu --action list --app TextEdit`                                  |
+| `--path`         | 菜单路径（`>` 分隔） | `swift run macos menu --action click --app TextEdit --path "Format > Font > Bold"`   |
+
 
 ### test_menu_list
 
@@ -544,12 +573,15 @@ swift run macos menu --action click --app Finder --path "File > New Finder Windo
 > 源文件：`Sources/MacOS/Commands/ClipboardCommand.swift`
 
 **参数说明与测试命令：**
-| 参数 | 含义 | 测试命令 |
-|------|------|---------|
-| `--action get` | 读取剪贴板内容 | `swift run macos clipboard --action get` |
-| `--action set` | 写入文本到剪贴板 | `swift run macos clipboard --action set --text "hello"` |
-| `--action clear` | 清空剪贴板 | `swift run macos clipboard --action clear` |
-| `--text` | 要写入的文本内容 | `swift run macos clipboard --action set --text "测试内容"` |
+
+
+| 参数               | 含义       | 测试命令                                                    |
+| ---------------- | -------- | ------------------------------------------------------- |
+| `--action get`   | 读取剪贴板内容  | `swift run macos clipboard --action get`                |
+| `--action set`   | 写入文本到剪贴板 | `swift run macos clipboard --action set --text "hello"` |
+| `--action clear` | 清空剪贴板    | `swift run macos clipboard --action clear`              |
+| `--text`         | 要写入的文本内容 | `swift run macos clipboard --action set --text "测试内容"`  |
+
 
 ### test_clipboard_set
 
@@ -632,43 +664,46 @@ swift run macos click 2>&1
 
 ## 测试汇总
 
-| 源文件 | 测试方法 | 测试的代码路径 | 通过 |
-|--------|---------|--------------|------|
-| `Commands/AppCommand.swift` | test_app_list | `run()` → `"list"` 分支 | [ ] |
-| `Commands/AppCommand.swift` | test_app_launch | `run()` → `"launch"` + `findAppURL()` | [ ] |
-| `Commands/AppCommand.swift` | test_app_focus | `run()` → `"focus"` → `activate()` | [ ] |
-| `Commands/AppCommand.swift` | test_app_quit | `run()` → `"quit"` → `terminate()` | [ ] |
-| `Commands/AppCommand.swift` | test_app_quit_force | `run()` → `"quit"` + `--force` → `forceTerminate()` | [ ] |
-| `Commands/AppCommand.swift` | test_app_error_not_found | `run()` → 查找失败 | [ ] |
-| `Commands/SeeCommand.swift` | test_see_human | `run()` → `discoverElements()` + human 输出 | [ ] |
-| `Commands/SeeCommand.swift` | test_see_json | `run()` → `Output.printCodable(SeeResult)` | [ ] |
-| `Commands/SeeCommand.swift` | test_see_screenshot | `run()` → `ScreenCapture.captureWindow()` | [ ] |
-| `Commands/SeeCommand.swift` | test_see_max_depth | `run()` → `AccessibilityEngine(maxDepth:)` | [ ] |
-| `Commands/InspectCommand.swift` | test_inspect_human | `run()` → `getTree()` + `printTree()` | [ ] |
-| `Commands/InspectCommand.swift` | test_inspect_json | `run()` → `Output.print(tree)` | [ ] |
-| `Commands/ClickCommand.swift` | test_click_coords | `run()` → coords 解析 → `EventEngine.click()` | [ ] |
-| `Commands/ClickCommand.swift` | test_click_query | `run()` → `discoverElements()` + 文本匹配 | [ ] |
-| `Commands/ClickCommand.swift` | test_click_double | `run()` → `clickCount: 2` | [ ] |
-| `Commands/ClickCommand.swift` | test_click_right | `run()` → `button: .right` | [ ] |
-| `Commands/TypeCommand.swift` | test_type_text | `run()` → `EventEngine.typeText()` | [ ] |
-| `Commands/TypeCommand.swift` | test_type_clear | `run()` → `hotkey(["cmd","a"])` + `pressKey(51)` | [ ] |
-| `Commands/TypeCommand.swift` | test_type_coords | `run()` → coords → `click()` + `typeText()` | [ ] |
-| `Commands/TypeCommand.swift` | test_type_press_return | `run()` → `pressKey(36)` | [ ] |
-| `Commands/HotkeyCommand.swift` | test_hotkey_single | `run()` → `EventEngine.hotkey()` | [ ] |
-| `Commands/HotkeyCommand.swift` | test_hotkey_multi | `run()` → 多修饰键解析 | [ ] |
-| `Commands/HotkeyCommand.swift` | test_hotkey_error | `run()` → `EventError.unknownKey` | [ ] |
-| `Commands/ScrollCommand.swift` | test_scroll_down | `run()` → `EventEngine.scroll(.down)` | [ ] |
-| `Commands/ScrollCommand.swift` | test_scroll_coords | `run()` → `moveMouse()` + `scroll()` | [ ] |
-| `Commands/WindowCommand.swift` | test_window_list | `run()` → `listAppWindows()` | [ ] |
-| `Commands/WindowCommand.swift` | test_window_move | `run()` → `AXValueCreate(.cgPoint)` | [ ] |
-| `Commands/WindowCommand.swift` | test_window_resize | `run()` → `AXValueCreate(.cgSize)` | [ ] |
-| `Commands/WindowCommand.swift` | test_window_minimize | `run()` → `kAXMinimizedAttribute` | [ ] |
-| `Commands/WindowCommand.swift` | test_window_close | `run()` → `pressWindowButton(kAXCloseButton)` | [ ] |
-| `Commands/MenuCommand.swift` | test_menu_list | `run()` → `listMenuItems()` | [ ] |
-| `Commands/MenuCommand.swift` | test_menu_click | `run()` → `clickMenuItem()` + `findChild()` | [ ] |
-| `Commands/ClipboardCommand.swift` | test_clipboard_set | `run()` → `NSPasteboard.setString()` | [ ] |
-| `Commands/ClipboardCommand.swift` | test_clipboard_get | `run()` → `NSPasteboard.string(forType:)` | [ ] |
-| `Commands/ClipboardCommand.swift` | test_clipboard_clear | `run()` → `NSPasteboard.clearContents()` | [ ] |
-| `Core/Permissions.swift` | test_permissions_check | `ensureAccessibility()` | [ ] |
-| `Core/Output.swift` | test_output_json | `printCodable()` | [ ] |
-| `Core/Output.swift` | test_output_error | `error()` → stderr | [ ] |
+
+| 源文件                               | 测试方法                     | 测试的代码路径                                             | 通过  |
+| --------------------------------- | ------------------------ | --------------------------------------------------- | --- |
+| `Commands/AppCommand.swift`       | test_app_list            | `run()` → `"list"` 分支                               | [ ] |
+| `Commands/AppCommand.swift`       | test_app_launch          | `run()` → `"launch"` + `findAppURL()`               | [ ] |
+| `Commands/AppCommand.swift`       | test_app_focus           | `run()` → `"focus"` → `activate()`                  | [ ] |
+| `Commands/AppCommand.swift`       | test_app_quit            | `run()` → `"quit"` → `terminate()`                  | [ ] |
+| `Commands/AppCommand.swift`       | test_app_quit_force      | `run()` → `"quit"` + `--force` → `forceTerminate()` | [ ] |
+| `Commands/AppCommand.swift`       | test_app_error_not_found | `run()` → 查找失败                                      | [ ] |
+| `Commands/SeeCommand.swift`       | test_see_human           | `run()` → `discoverElements()` + human 输出           | [ ] |
+| `Commands/SeeCommand.swift`       | test_see_json            | `run()` → `Output.printCodable(SeeResult)`          | [ ] |
+| `Commands/SeeCommand.swift`       | test_see_screenshot      | `run()` → `ScreenCapture.captureWindow()`           | [ ] |
+| `Commands/SeeCommand.swift`       | test_see_max_depth       | `run()` → `AccessibilityEngine(maxDepth:)`          | [ ] |
+| `Commands/InspectCommand.swift`   | test_inspect_human       | `run()` → `getTree()` + `printTree()`               | [ ] |
+| `Commands/InspectCommand.swift`   | test_inspect_json        | `run()` → `Output.print(tree)`                      | [ ] |
+| `Commands/ClickCommand.swift`     | test_click_coords        | `run()` → coords 解析 → `EventEngine.click()`         | [ ] |
+| `Commands/ClickCommand.swift`     | test_click_query         | `run()` → `discoverElements()` + 文本匹配               | [ ] |
+| `Commands/ClickCommand.swift`     | test_click_double        | `run()` → `clickCount: 2`                           | [ ] |
+| `Commands/ClickCommand.swift`     | test_click_right         | `run()` → `button: .right`                          | [ ] |
+| `Commands/TypeCommand.swift`      | test_type_text           | `run()` → `EventEngine.typeText()`                  | [ ] |
+| `Commands/TypeCommand.swift`      | test_type_clear          | `run()` → `hotkey(["cmd","a"])` + `pressKey(51)`    | [ ] |
+| `Commands/TypeCommand.swift`      | test_type_coords         | `run()` → coords → `click()` + `typeText()`         | [ ] |
+| `Commands/TypeCommand.swift`      | test_type_press_return   | `run()` → `pressKey(36)`                            | [ ] |
+| `Commands/HotkeyCommand.swift`    | test_hotkey_single       | `run()` → `EventEngine.hotkey()`                    | [ ] |
+| `Commands/HotkeyCommand.swift`    | test_hotkey_multi        | `run()` → 多修饰键解析                                    | [ ] |
+| `Commands/HotkeyCommand.swift`    | test_hotkey_error        | `run()` → `EventError.unknownKey`                   | [ ] |
+| `Commands/ScrollCommand.swift`    | test_scroll_down         | `run()` → `EventEngine.scroll(.down)`               | [ ] |
+| `Commands/ScrollCommand.swift`    | test_scroll_coords       | `run()` → `moveMouse()` + `scroll()`                | [ ] |
+| `Commands/WindowCommand.swift`    | test_window_list         | `run()` → `listAppWindows()`                        | [ ] |
+| `Commands/WindowCommand.swift`    | test_window_move         | `run()` → `AXValueCreate(.cgPoint)`                 | [ ] |
+| `Commands/WindowCommand.swift`    | test_window_resize       | `run()` → `AXValueCreate(.cgSize)`                  | [ ] |
+| `Commands/WindowCommand.swift`    | test_window_minimize     | `run()` → `kAXMinimizedAttribute`                   | [ ] |
+| `Commands/WindowCommand.swift`    | test_window_close        | `run()` → `pressWindowButton(kAXCloseButton)`       | [ ] |
+| `Commands/MenuCommand.swift`      | test_menu_list           | `run()` → `listMenuItems()`                         | [ ] |
+| `Commands/MenuCommand.swift`      | test_menu_click          | `run()` → `clickMenuItem()` + `findChild()`         | [ ] |
+| `Commands/ClipboardCommand.swift` | test_clipboard_set       | `run()` → `NSPasteboard.setString()`                | [ ] |
+| `Commands/ClipboardCommand.swift` | test_clipboard_get       | `run()` → `NSPasteboard.string(forType:)`           | [ ] |
+| `Commands/ClipboardCommand.swift` | test_clipboard_clear     | `run()` → `NSPasteboard.clearContents()`            | [ ] |
+| `Core/Permissions.swift`          | test_permissions_check   | `ensureAccessibility()`                             | [ ] |
+| `Core/Output.swift`               | test_output_json         | `printCodable()`                                    | [ ] |
+| `Core/Output.swift`               | test_output_error        | `error()` → stderr                                  | [ ] |
+
+
