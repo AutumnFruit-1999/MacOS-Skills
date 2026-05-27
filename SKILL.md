@@ -112,6 +112,12 @@ macos menu --action click --app Finder --path "File > New Folder"
 - 应用/元素未找到：使用 `--human` 查看详细错误
 - UI 已变化：重新执行 `see` 获取最新元素列表
 
+## 已知限制
+
+- **非前台应用元素不完整**：macOS Accessibility API 对非前台窗口只暴露部分元素。建议先 `app --action focus` 再 `see`
+- **Electron 应用元素少**：Cursor、VS Code 等基于 Electron 的应用可能返回较少可交互元素
+- **应用名必须使用 localizedName**：中文系统下访达是"访达"非"Finder"，可通过 `app --action list` 查看正确名称
+
 ## 详细参考
 
 完整命令参数说明见 [reference.md](reference.md)。

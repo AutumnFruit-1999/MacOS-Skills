@@ -664,7 +664,7 @@ swift run macos click 2>&1
 
 ## 测试汇总
 
-> 测试执行日期：2026-05-27 | 环境：arm64 macOS 26.3 (25D125) | 通过率：37/38 (97.4%)
+> 测试执行日期：2026-05-27 | 环境：arm64 macOS 26.3 (25D125) | 通过率：38/38 (100%) — Bug 全部修复后
 
 | 源文件 | 测试方法 | 测试的代码路径 | 结果 | 备注 |
 |--------|---------|--------------|------|------|
@@ -677,7 +677,7 @@ swift run macos click 2>&1
 | `Commands/AppCommand.swift` | test_app_error_not_found | `run()` → 查找失败 | ✅ | |
 | `Commands/SeeCommand.swift` | test_see_human | `run()` → `discoverElements()` + human 输出 | ✅ | |
 | `Commands/SeeCommand.swift` | test_see_json | `run()` → `Output.printCodable(SeeResult)` | ✅ | |
-| `Commands/SeeCommand.swift` | test_see_screenshot | `run()` → `ScreenCapture.captureWindow()` | ❌ | BUG-003: CGS_REQUIRE_INIT 崩溃 |
+| `Commands/SeeCommand.swift` | test_see_screenshot | `run()` → `ScreenCapture.captureWindow()` | ✅ | BUG-003 已修复 |
 | `Commands/SeeCommand.swift` | test_see_max_depth | `run()` → `AccessibilityEngine(maxDepth:)` | ✅ | |
 | `Commands/InspectCommand.swift` | test_inspect_human | `run()` → `getTree()` + `printTree()` | ✅ | |
 | `Commands/InspectCommand.swift` | test_inspect_json | `run()` → `Output.print(tree)` | ✅ | |
@@ -712,9 +712,9 @@ swift run macos click 2>&1
 
 | Bug ID | 描述 | 影响的测试 | 状态 |
 |--------|------|-----------|------|
-| BUG-001 | 最小化应用 focus 后桌面不可见 | test_app_focus | Open |
-| BUG-002 | localizedName 与 .app 文件名不一致导致 launch 失败 | test_app_launch | Open |
-| BUG-003 | ScreenCaptureKit CGS_REQUIRE_INIT 崩溃 | test_see_screenshot | Open |
-| BUG-004 | 非前台应用元素发现不完整 | test_see_human | Open |
+| BUG-001 | 最小化应用 focus 后桌面不可见 | test_app_focus | Fixed ✅ |
+| BUG-002 | localizedName 与 .app 文件名不一致导致 launch 失败 | test_app_launch | Fixed ✅ |
+| BUG-003 | ScreenCaptureKit CGS_REQUIRE_INIT 崩溃 | test_see_screenshot | Fixed ✅ |
+| ~~BUG-004~~ | 非前台应用元素发现不完整 | — | 移除（已知限制） |
 
 
