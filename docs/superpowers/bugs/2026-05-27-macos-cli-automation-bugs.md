@@ -218,3 +218,126 @@ swift run macos app --action launch --name TextEdit
 # 验证其他中文名应用
 swift run macos app --action launch --name 微信
 ```
+
+---
+
+## BUG-003: screenshot 截图时 CGS_REQUIRE_INIT 断言崩溃
+
+### 状态
+
+- **优先级：** P1
+- **状态：** Open
+- **发现日期：** 2026-05-27
+- **影响命令：** `see --screenshot`
+
+### 复现步骤
+
+1. 执行带截图的 see 命令：
+   ```bash
+   swift run macos see --app Cursor --screenshot /tmp/test-see.png
+   ```
+2. **实际结果：** 程序崩溃（Assertion failed）
+   ```
+   Assertion failed: (did_initialize), function CGS_REQUIRE_INIT, file CGInitialization.c, line 44.
+
+   💣 Program crashed: Aborted at 0x000000018e6555b0
+
+   Platform: arm64 macOS 26.3 (25D125)
+   ```
+3. **期望结果：** 截图保存到 `/tmp/test-see.png`
+
+### 崩溃堆栈
+
+```
+Thread 2 crashed:
+  0 __pthread_kill + 8 in libsystem_kernel.dylib
+  1 abort + 124 in libsystem_c.dylib
+  2 __assert_rtn + 284 in libsystem_c.dylib
+  3 SLSGetDisplaysWithRect + 508 in SkyLight
+  4 SLGetDisplaysWithRect + 72 in SkyLight
+  5 -[SCContentFilter setContentsAndStreamType] + 232 in ScreenCaptureKit
+  6 -[SCContentFilter initWithDesktopIndependentWindow:] + 420 in ScreenCaptureKit
+  7 static ScreenCapture.captureWindow(pid:saveTo:) + 368
+    → ScreenCapture.swift:24  let filter = SCContentFilter(desktopIndependentWindow: window)
+  8 SeeCommand.run()
+    → SeeCommand.swift:34     try await ScreenCapture.captureWindow(pid: pid, saveTo: path)
+```
+
+### 根本原因分析
+
+`CGS_REQUIRE_INIT` 断言表示 **Core Graphics Server (CGS) 连接未初始化**。
+
+原因是 CLI 工具作为纯命令行进程运行时，没有连接到 WindowServer（没有 GUI 事件循环）。`ScreenCaptureKit` 的 `SCContentFilter(desktopIndependentWindow:)` 内部需要通过 `SkyLight` 框架查询显示器信息，这要求进程已建立 CGS 连接。
+
+**关键点：**
+- 通过 `swift run` 或直接执行二进制时，进程没有 `NSApplication` 实例
+- `ScreenCaptureKit` 依赖 WindowServer 连接来获取窗口几何信息
+- 没有 CGS 连接时，`SLSGetDisplaysWithRect` 触发 `did_initialize` 断言失败
+
+### 修复方案
+
+在调用 ScreenCaptureKit 前确保 CGS 连接已建立：
+
+```swift
+// Sources/MacOS/Core/ScreenCapture.swift
+
+static func captureWindow(pid: pid_t, saveTo path: String) async throws {
+    // 确保 CGS 连接初始化（CLI 进程需要）
+    let _ = NSApplication.shared
+
+    let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+    guard let window = content.windows.first(where: { $0.owningApplication?.processID == pid }) else {
+        throw CaptureError.windowNotFound
+    }
+    // 使用 display + including window 替代 desktopIndependentWindow
+    guard let display = content.displays.first else { throw CaptureError.noDisplay }
+    let filter = SCContentFilter(display: display, including: [window])
+    let config = SCStreamConfiguration()
+    config.width = Int(window.frame.width)
+    config.height = Int(window.frame.height)
+    config.pixelFormat = kCVPixelFormatType_32BGRA
+    config.shouldBeOpaque = true
+    let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+    try saveImage(image, to: path)
+}
+```
+
+**修复要点：**
+1. 添加 `NSApplication.shared` 调用触发 CGS 连接初始化
+2. 用 `SCContentFilter(display:including:)` 替代 `SCContentFilter(desktopIndependentWindow:)`，避免 SkyLight 内部断言
+3. `captureScreen` 方法也需要同样的 `NSApplication.shared` 初始化
+
+### 涉及文件
+
+| 文件 | 方法 | 说明 |
+|------|------|------|
+| `Sources/MacOS/Core/ScreenCapture.swift` | `captureWindow(pid:saveTo:)` | 崩溃位置，第 24 行 |
+| `Sources/MacOS/Core/ScreenCapture.swift` | `captureScreen(saveTo:)` | 同样可能受影响 |
+
+### 相关知识
+
+- `CGS_REQUIRE_INIT`：Core Graphics Server 要求进程已通过 `CGSInitialize()` 或 `NSApplication` 建立连接
+- CLI 进程默认不连接 WindowServer，不像 `.app` bundle 自动初始化
+- `NSApplication.shared` 的副作用：会初始化 AppKit 运行时，包括 CGS 连接
+- 替代方案：使用 `CGMainDisplayID()` 也可触发 CGS 初始化
+- `SCContentFilter(desktopIndependentWindow:)` 在 macOS 26 上可能比 14/15 更严格
+
+### 测试验证
+
+修复后用以下步骤验证：
+
+```bash
+# 窗口截图
+swift run macos see --app Finder --screenshot /tmp/test-finder.png
+file /tmp/test-finder.png
+# 预期：PNG image data
+
+# Electron 应用截图
+swift run macos see --app Cursor --screenshot /tmp/test-cursor.png
+file /tmp/test-cursor.png
+# 预期：PNG image data
+
+# 全屏截图（如果有 captureScreen 入口）
+swift run macos see --screenshot /tmp/test-screen.png
+file /tmp/test-screen.png
+```
