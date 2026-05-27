@@ -228,7 +228,8 @@ swift run macos app --action launch --name 微信
 ### 状态
 
 - **优先级：** P1
-- **状态：** Open
+- **状态：** Fixed ✅（2026-05-27）
+- **修复提交：** `a464ddf`
 - **发现日期：** 2026-05-27
 - **影响命令：** `see --screenshot`
 
