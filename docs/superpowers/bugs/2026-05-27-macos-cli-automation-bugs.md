@@ -101,3 +101,120 @@ swift run macos app --action focus --name 微信
 # 4. 验证窗口恢复显示
 swift run macos see --app 微信 --human
 ```
+
+---
+
+## BUG-002: launch 通过 localizedName 查找 .app 路径失败
+
+### 状态
+
+- **优先级：** P1
+- **状态：** Open
+- **发现日期：** 2026-05-27
+- **影响命令：** `app --action launch`
+
+### 复现步骤
+
+1. 钉钉应用已安装于 `/Applications/DingTalk.app`
+2. 执行 launch 命令：
+   ```bash
+   swift run macos app --action launch --name 钉钉 --human
+   ```
+3. **实际结果：**
+   ```json
+   {"error": "应用未找到: 钉钉"}
+   ```
+4. **期望结果：** 钉钉启动成功
+
+### 根本原因分析
+
+`findAppURL(name:)` 使用传入的 `--name` 参数直接拼接路径：
+
+```swift
+// Sources/MacOS/Commands/AppCommand.swift
+private func findAppURL(name: String) -> URL? {
+    for dir in ["/Applications", "/System/Applications", "/Applications/Utilities"] {
+        let url = URL(fileURLWithPath: "\(dir)/\(name).app")
+        if FileManager.default.fileExists(atPath: url.path) { return url }
+    }
+    return nil
+}
+```
+
+问题在于：
+- 用户传入 `--name 钉钉`（中文 localizedName）
+- 实际 `.app` 文件名是 `DingTalk.app`（英文 bundle name）
+- 拼接 `/Applications/钉钉.app` 路径不存在
+
+类似问题的应用还有：微信 → `WeChat.app`、QQ → `QQ.app`（巧合同名）等。
+
+### 修复方案
+
+使用 `NSWorkspace` 或 Spotlight (`mdfind`) 按 `localizedName` 查找真实 URL：
+
+```swift
+private func findAppURL(name: String) -> URL? {
+    // 方案 1：直接路径匹配（英文名场景）
+    for dir in ["/Applications", "/System/Applications", "/Applications/Utilities"] {
+        let url = URL(fileURLWithPath: "\(dir)/\(name).app")
+        if FileManager.default.fileExists(atPath: url.path) { return url }
+    }
+    // 方案 2：通过 NSWorkspace 查找已安装应用的 bundleURL
+    if let app = NSWorkspace.shared.runningApplications.first(where: { $0.localizedName == name }) {
+        return app.bundleURL
+    }
+    // 方案 3：通过 Launch Services 按名称搜索
+    let workspace = NSWorkspace.shared
+    if let url = workspace.urlForApplication(withBundleIdentifier: "") {
+        // 此 API 不支持按名称，需用 Spotlight
+    }
+    // 方案 4：Spotlight 查询
+    // mdfind "kMDItemDisplayName == '钉钉' && kMDItemKind == 'Application'"
+    let task = Process()
+    task.executableURL = URL(fileURLWithPath: "/usr/bin/mdfind")
+    task.arguments = ["kMDItemDisplayName == '\(name)' && kMDItemKind == 'Application'"]
+    let pipe = Pipe()
+    task.standardOutput = pipe
+    try? task.run()
+    task.waitUntilExit()
+    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+    if let output = String(data: data, encoding: .utf8),
+       let firstLine = output.split(separator: "\n").first {
+        return URL(fileURLWithPath: String(firstLine))
+    }
+    return nil
+}
+```
+
+**推荐修复策略（优先级顺序）：**
+1. 先尝试直接路径匹配（已有逻辑）
+2. 若应用正在运行，从 `runningApplications` 获取 `bundleURL`
+3. 兜底使用 Spotlight 搜索
+
+### 涉及文件
+
+| 文件 | 方法 | 说明 |
+|------|------|------|
+| `Sources/MacOS/Commands/AppCommand.swift` | `findAppURL(name:)` | 需要支持 localizedName → bundleURL 映射 |
+
+### 相关知识
+
+- macOS `.app` 文件名（如 `DingTalk.app`）与 `localizedName`（如 "钉钉"）不一定相同
+- `NSRunningApplication.bundleURL` 可获取正在运行应用的真实路径
+- `mdfind` 是 macOS Spotlight 的命令行接口，可按 `kMDItemDisplayName` 搜索
+- 影响范围：所有中文名、日文名或与 bundle name 不一致的应用
+
+### 测试验证
+
+修复后用以下步骤验证：
+
+```bash
+# 中文名启动
+swift run macos app --action launch --name 钉钉
+
+# 英文名启动（回归测试）
+swift run macos app --action launch --name TextEdit
+
+# 验证其他中文名应用
+swift run macos app --action launch --name 微信
+```
