@@ -56,19 +56,30 @@ struct AppCommand: AsyncParsableCommand {
                 Output.error("应用未运行: \(appName)")
                 throw ExitCode.failure
             }
-            app.activate()
             let appElement = AXUIElementCreateApplication(app.processIdentifier)
             var windowsRef: AnyObject?
             AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef)
-            if let windows = windowsRef as? [AXUIElement] {
+            let windows = windowsRef as? [AXUIElement] ?? []
+            if windows.isEmpty {
+                // 无窗口时（如微信关闭窗口后仍在 Dock 运行），通过 open 命令唤起
+                if let bundleID = app.bundleIdentifier {
+                    let task = Process()
+                    task.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+                    task.arguments = ["-b", bundleID]
+                    try? task.run()
+                    task.waitUntilExit()
+                }
+            } else {
                 for window in windows {
                     var minimizedRef: AnyObject?
                     AXUIElementCopyAttributeValue(window, kAXMinimizedAttribute as CFString, &minimizedRef)
                     if let minimized = minimizedRef as? Bool, minimized {
                         AXUIElementSetAttributeValue(window, kAXMinimizedAttribute as CFString, false as CFBoolean)
                     }
+                    AXUIElementPerformAction(window, kAXRaiseAction as CFString)
                 }
             }
+            app.activate()
             Output.printCodable(AppResult(action: "focus", app: appName, pid: app.processIdentifier))
 
         case "list":
