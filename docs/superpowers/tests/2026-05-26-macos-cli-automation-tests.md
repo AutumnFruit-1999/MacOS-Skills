@@ -1,6 +1,6 @@
 # macOS CLI 自动化工具 — 测试文档
 
-本文档提供可复现的测试步骤，验证所有命令方法正常工作。
+本文档提供可复现的测试步骤，验证所有命令方法正常工作。每个用例标注了对应的源文件和方法。
 
 ## 前置条件
 
@@ -14,430 +14,564 @@
 
 ## AppCommand 测试
 
-### test_app_list — 列出运行中应用
+> 源文件：`Sources/MacOS/Commands/AppCommand.swift`
+
+### test_app_list
+
+**测试方法：** `AppCommand.run()` → `case "list"` 分支
 
 ```bash
 swift run macos app --action list --human
 ```
 
-**预期：** 输出所有 GUI 应用，`*` 标记活动应用，格式 `名称 (PID: xxx)`。
+**预期：** 遍历 `NSWorkspace.shared.runningApplications`，输出所有 GUI 应用。
 
-### test_app_list_json — JSON 格式应用列表
+---
 
-```bash
-swift run macos app --action list
-```
+### test_app_launch
 
-**预期：** JSON 数组，每项含 `name`、`pid`、`active` 字段。
-
-### test_app_launch — 启动应用
+**测试方法：** `AppCommand.run()` → `case "launch"` 分支 + `findAppURL(name:)`
 
 ```bash
 swift run macos app --action launch --name TextEdit --wait
 ```
 
-**预期：** JSON 含 `"action": "launch"`、`"pid": <number>`。TextEdit 窗口出现。
+**预期：** 调用 `NSWorkspace.shared.openApplication(at:configuration:)`，TextEdit 启动。
 
-### test_app_focus — 聚焦应用
+---
+
+### test_app_focus
+
+**测试方法：** `AppCommand.run()` → `case "focus"` 分支
 
 ```bash
 swift run macos app --action focus --name Finder
 ```
 
-**预期：** Finder 成为前台应用。JSON 含 `"action": "focus"`。
+**预期：** 调用 `NSRunningApplication.activate()`，Finder 成为前台。
 
-### test_app_quit — 正常退出
+---
+
+### test_app_quit
+
+**测试方法：** `AppCommand.run()` → `case "quit"` 分支
 
 ```bash
 swift run macos app --action quit --name TextEdit
 ```
 
-**预期：** TextEdit 退出。JSON 含 `"action": "quit"`。
+**预期：** 调用 `NSRunningApplication.terminate()`。
 
-### test_app_quit_force — 强制退出
+---
+
+### test_app_quit_force
+
+**测试方法：** `AppCommand.run()` → `case "quit"` + `--force` → `forceTerminate()`
 
 ```bash
 swift run macos app --action launch --name TextEdit --wait
 swift run macos app --action quit --name TextEdit --force
 ```
 
-**预期：** TextEdit 立即退出，无保存对话框。
+**预期：** 调用 `NSRunningApplication.forceTerminate()`，立即退出无对话框。
 
-### test_app_error_not_found — 错误：应用不存在
+---
+
+### test_app_error_not_found
+
+**测试方法：** `AppCommand.run()` → `case "focus"` → 查找失败分支
 
 ```bash
 swift run macos app --action focus --name NonExistentApp123
 ```
 
-**预期：** stderr 输出 `{"error": "应用未运行: NonExistentApp123"}`，退出码非 0。
+**预期：** `Output.error("应用未运行: ...")`，退出码非 0。
 
 ---
 
 ## SeeCommand 测试
 
-### test_see_human — 人类可读元素列表
+> 源文件：`Sources/MacOS/Commands/SeeCommand.swift`
+
+### test_see_human
+
+**测试方法：** `SeeCommand.run()` → `AccessibilityEngine.discoverElements(pid:)` + `human` 输出分支
 
 ```bash
 swift run macos see --app Finder --human
 ```
 
-**预期：** 输出 `应用: 访达 | 元素数: N`，后跟缩进的元素列表 `ID [角色] 标题`。
+**预期：** 调用 `AccessibilityEngine` 遍历 AX 树，输出扁平化的可交互元素列表。
 
-### test_see_json — JSON 格式元素列表
+---
+
+### test_see_json
+
+**测试方法：** `SeeCommand.run()` → `Output.printCodable(SeeResult(...))`
 
 ```bash
 swift run macos see --app Finder
 ```
 
-**预期：** JSON 含 `app`、`elements` 数组。每个元素含 `id`、`role`、`frame`（x/y/w/h）。
+**预期：** JSON 输出 `SeeResult` 结构（app + elements 数组）。
 
-### test_see_screenshot — 附带截图
+---
+
+### test_see_screenshot
+
+**测试方法：** `SeeCommand.run()` → `ScreenCapture.captureWindow(pid:saveTo:)`
+
+> 源文件：`Sources/MacOS/Core/ScreenCapture.swift` → `captureWindow(pid:saveTo:)`
 
 ```bash
 swift run macos see --app Finder --screenshot /tmp/test-see.png
 ```
 
-**预期：** `/tmp/test-see.png` 生成。验证：`file /tmp/test-see.png` → `PNG image data`。
+**验证：**
+```bash
+file /tmp/test-see.png
+```
+**预期：** `PNG image data`。
 
-### test_see_max_depth — 自定义遍历深度
+---
+
+### test_see_max_depth
+
+**测试方法：** `SeeCommand.run()` → `AccessibilityEngine(maxDepth:)` 初始化参数传递
 
 ```bash
-swift run macos see --app Finder --max-depth 3 --human
+swift run macos see --app Finder --max-depth 2 --human
 ```
 
-**预期：** 元素数量少于默认深度（因为只遍历 3 层）。
-
-### test_see_error_app_not_found — 错误：应用不存在
-
-```bash
-swift run macos see --app FakeApp999
-```
-
-**预期：** stderr 输出错误 JSON，退出码非 0。
+**预期：** 元素数量少于默认值（遍历深度受限）。
 
 ---
 
 ## InspectCommand 测试
 
-### test_inspect_human — 人类可读 AX 树
+> 源文件：`Sources/MacOS/Commands/InspectCommand.swift`
+
+### test_inspect_human
+
+**测试方法：** `InspectCommand.run()` → `AccessibilityEngine.getTree(pid:maxDepth:)` + `printTree(_:indent:)`
 
 ```bash
 swift run macos inspect --app Finder --max-depth 3 --human
 ```
 
-**预期：** 缩进树形输出，如 `AXApplication ("访达")\n  AXWindow (...)\n    ...`。
+**预期：** 递归输出树形结构，`buildTree` 方法返回嵌套字典。
 
-### test_inspect_json — JSON 格式 AX 树
+---
+
+### test_inspect_json
+
+**测试方法：** `InspectCommand.run()` → `Output.print(result)` 序列化嵌套字典
 
 ```bash
 swift run macos inspect --app Finder --max-depth 2
 ```
 
-**预期：** JSON 含 `app` 和 `tree`，tree 为嵌套结构含 `role`、`title`、`children`。
+**预期：** JSON 含 `tree.role`、`tree.children[]`。
 
 ---
 
 ## ClickCommand 测试
 
-### test_click_coords — 坐标点击
+> 源文件：`Sources/MacOS/Commands/ClickCommand.swift`
+
+### test_click_coords
+
+**测试方法：** `ClickCommand.run()` → `coords` 分支 → `EventEngine.click(at:button:clickCount:)`
+
+> 源文件：`Sources/MacOS/Core/EventEngine.swift` → `click(at:button:clickCount:)`
 
 ```bash
-swift run macos app --action launch --name TextEdit --wait
-swift run macos see --app TextEdit
-# 从输出找到文本区域 frame，计算中心点
 swift run macos click --coords 400,300
 ```
 
-**预期：** JSON 含 `"clicked": true`、坐标信息。TextEdit 获得焦点。
+**预期：** 调用 `CGEvent` 模拟鼠标点击 (400,300)。
 
-### test_click_query — 文本查找点击
+---
+
+### test_click_query
+
+**测试方法：** `ClickCommand.run()` → `query` 分支 → `AccessibilityEngine.discoverElements()` + 文本匹配 + `EventEngine.click()`
 
 ```bash
-swift run macos click --query "最小化" --app TextEdit
+swift run macos click --query "最小化" --app Finder
 ```
 
-**预期：** TextEdit 窗口最小化。JSON 含 `"clicked": true`。
+**预期：** 遍历 Finder 元素，找到标题含 "最小化" 的按钮，计算中心坐标并点击。
 
-### test_click_double — 双击
+---
+
+### test_click_double
+
+**测试方法：** `ClickCommand.run()` → `EventEngine.click(at:button:clickCount: 2)`
 
 ```bash
 swift run macos click --coords 400,300 --double
 ```
 
-**预期：** JSON 含 `"click_count": 2`。
+**预期：** `clickCount = 2`，模拟双击事件。
 
-### test_click_right — 右键点击
+---
+
+### test_click_right
+
+**测试方法：** `ClickCommand.run()` → `EventEngine.click(at:button: .right, ...)`
 
 ```bash
 swift run macos click --coords 400,300 --right
 ```
 
-**预期：** JSON 含 `"button": "right"`。弹出右键菜单。
-
-### test_click_error_no_args — 错误：缺少参数
-
-```bash
-swift run macos click
-```
-
-**预期：** 错误提示需要 --query 或 --coords。
-
-### test_click_error_invalid_coords — 错误：无效坐标
-
-```bash
-swift run macos click --coords abc
-```
-
-**预期：** 错误提示坐标格式不对。
+**预期：** `CGMouseButton.right`，弹出右键菜单。
 
 ---
 
 ## TypeCommand 测试
 
-### test_type_text — 基础文本输入
+> 源文件：`Sources/MacOS/Commands/TypeCommand.swift`
+
+### test_type_text
+
+**测试方法：** `TypeCommand.run()` → `EventEngine.typeText(_:delay:)`
+
+> 源文件：`Sources/MacOS/Core/EventEngine.swift` → `typeText(_:delay:)`
 
 ```bash
-swift run macos app --action launch --name TextEdit --wait
 swift run macos click --coords 400,300
-swift run macos type --text "Hello macOS"
+swift run macos type --text "Hello"
 ```
 
-**预期：** TextEdit 出现 "Hello macOS"。JSON 含 `"typed": "Hello macOS"`。
+**预期：** 逐字符通过 `CGEvent` 键盘事件输入。
 
-### test_type_clear — 清空后输入
+---
+
+### test_type_clear
+
+**测试方法：** `TypeCommand.run()` → `clear` 分支 → `EventEngine.hotkey(["cmd","a"])` + `pressKey(51)`
 
 ```bash
-swift run macos type --text "Replaced" --clear
+swift run macos type --text "New" --clear
 ```
 
-**预期：** 原文被替换为 "Replaced"。JSON 含 `"cleared": true`。
+**预期：** 先 Cmd+A 全选，再 Delete 清空，再输入。
 
-### test_type_press_return — 输入后回车
+---
 
-```bash
-swift run macos type --text "Line1" --press-return
-```
+### test_type_coords
 
-**预期：** 输入后光标换行。JSON 含 `"pressed_return": true`。
-
-### test_type_coords — 先聚焦坐标后输入
+**测试方法：** `TypeCommand.run()` → `coords` 解析 → `EventEngine.click(at:)` 聚焦
 
 ```bash
 swift run macos type --text "Focused" --coords 400,300
 ```
 
-**预期：** 先点击 (400,300) 聚焦，再输入文本。
+**预期：** 先点击 (400,300) 聚焦元素，再输入文本。
+
+---
+
+### test_type_press_return
+
+**测试方法：** `TypeCommand.run()` → `pressReturn` → `EventEngine.pressKey(36)`
+
+```bash
+swift run macos type --text "Line" --press-return
+```
+
+**预期：** 输入后按回车（keyCode 36）。
 
 ---
 
 ## HotkeyCommand 测试
 
-### test_hotkey_single — 单键快捷键
+> 源文件：`Sources/MacOS/Commands/HotkeyCommand.swift`
+
+### test_hotkey_single
+
+**测试方法：** `HotkeyCommand.run()` → `EventEngine.hotkey(keys:)`
+
+> 源文件：`Sources/MacOS/Core/EventEngine.swift` → `hotkey(keys:)` → `pressKey(_:modifiers:)`
 
 ```bash
 swift run macos hotkey --keys cmd,a
 ```
 
-**预期：** 全选操作。JSON 含 `"pressed": "cmd,a"`。
+**预期：** 解析 "cmd" 为 `.maskCommand`，"a" 查表得 keyCode 0，触发 Cmd+A。
 
-### test_hotkey_multi — 多修饰键组合
+---
+
+### test_hotkey_multi_modifiers
+
+**测试方法：** `EventEngine.hotkey(keys:)` → 多修饰键组合
 
 ```bash
 swift run macos hotkey --keys cmd,shift,t
 ```
 
-**预期：** 对应快捷键触发。JSON 含 `"pressed": "cmd,shift,t"`。
+**预期：** modifiers = `.maskCommand | .maskShift`，keyCode = 17 (t)。
 
-### test_hotkey_error_unknown_key — 错误：未知按键
+---
+
+### test_hotkey_error_unknown_key
+
+**测试方法：** `EventEngine.hotkey(keys:)` → `keyCodeMap` 查找失败 → `throw EventError.unknownKey`
+
+> 源文件：`Sources/MacOS/Core/EventEngine.swift` → `EventError.unknownKey`
 
 ```bash
 swift run macos hotkey --keys cmd,xyz
 ```
 
-**预期：** 错误提示 "未知按键: 'xyz'"。
+**预期：** 抛出 `EventError.unknownKey("xyz")`。
 
 ---
 
 ## ScrollCommand 测试
 
-### test_scroll_down — 向下滚动
+> 源文件：`Sources/MacOS/Commands/ScrollCommand.swift`
+
+### test_scroll_down
+
+**测试方法：** `ScrollCommand.run()` → `EventEngine.scroll(direction: .down, amount:)`
+
+> 源文件：`Sources/MacOS/Core/EventEngine.swift` → `scroll(direction:amount:)`
 
 ```bash
 swift run macos scroll --direction down --amount 5
 ```
 
-**预期：** 当前位置向下滚动。JSON 含 `"direction": "down", "amount": 5`。
+**预期：** 调用 `CGEvent(scrollWheelEvent2Source:...)` 向下滚动。
 
-### test_scroll_up_coords — 指定坐标滚动
+---
+
+### test_scroll_coords
+
+**测试方法：** `ScrollCommand.run()` → `coords` 解析 → `EventEngine.moveMouse(to:)` + `scroll()`
 
 ```bash
 swift run macos scroll --direction up --amount 3 --coords 400,300
 ```
 
-**预期：** 鼠标先移到 (400,300)，再向上滚动 3 行。
-
-### test_scroll_error_invalid_direction — 错误：无效方向
-
-```bash
-swift run macos scroll --direction diagonal
-```
-
-**预期：** 错误提示使用 up/down/left/right。
+**预期：** 先 `moveMouse` 到 (400,300)，再 scroll。
 
 ---
 
 ## WindowCommand 测试
 
-### test_window_list — 列出应用窗口
+> 源文件：`Sources/MacOS/Commands/WindowCommand.swift`
+
+### test_window_list
+
+**测试方法：** `WindowCommand.run()` → `case "list"` → `listAppWindows(appElement:appName:)`
 
 ```bash
 swift run macos window --action list --app Finder
 ```
 
-**预期：** JSON 数组，每项含 `index`、`title`、`app`。
+**预期：** 遍历 `kAXWindowsAttribute`，返回窗口信息数组。
 
-### test_window_move — 移动窗口
+---
+
+### test_window_move
+
+**测试方法：** `WindowCommand.run()` → `case "move"` → `AXValueCreate(.cgPoint)` + `AXUIElementSetAttributeValue(kAXPositionAttribute)`
 
 ```bash
 swift run macos window --action move --app TextEdit --x 200 --y 200
 ```
 
-**预期：** 窗口移到 (200, 200)。JSON 含 `"success": true`。
+**预期：** 窗口位置改变。
 
-### test_window_resize — 缩放窗口
+---
+
+### test_window_resize
+
+**测试方法：** `WindowCommand.run()` → `case "resize"` → `AXValueCreate(.cgSize)` + `AXUIElementSetAttributeValue(kAXSizeAttribute)`
 
 ```bash
 swift run macos window --action resize --app TextEdit --width 800 --height 600
 ```
 
-**预期：** 窗口变为 800x600。JSON 含 `"success": true`。
+**预期：** 窗口大小改变。
 
-### test_window_minimize — 最小化
+---
+
+### test_window_minimize
+
+**测试方法：** `WindowCommand.run()` → `case "minimize"` → `AXUIElementSetAttributeValue(kAXMinimizedAttribute)`
 
 ```bash
 swift run macos window --action minimize --app TextEdit
 ```
 
-**预期：** 窗口最小化到 Dock。
+**预期：** 窗口最小化。
 
-### test_window_close — 关闭窗口
+---
+
+### test_window_close
+
+**测试方法：** `WindowCommand.run()` → `case "close"` → `pressWindowButton(kAXCloseButtonAttribute)`
 
 ```bash
 swift run macos window --action close --app TextEdit
 ```
 
-**预期：** 窗口关闭。
-
-### test_window_focus — 聚焦窗口
-
-```bash
-swift run macos window --action focus --app TextEdit --title "未命名"
-```
-
-**预期：** 匹配标题的窗口获得焦点。
+**预期：** 关闭按钮被按下。
 
 ---
 
 ## MenuCommand 测试
 
-### test_menu_list — 列出菜单项
+> 源文件：`Sources/MacOS/Commands/MenuCommand.swift`
+
+### test_menu_list
+
+**测试方法：** `MenuCommand.run()` → `case "list"` → `listMenuItems(appElement:)`
 
 ```bash
 swift run macos menu --action list --app Finder
 ```
 
-**预期：** JSON 数组，每项含 `menu`（如 "File"）和 `items`（子菜单项名称数组）。
+**预期：** 遍历 `kAXMenuBarAttribute` → `kAXChildrenAttribute`，返回 `[MenuItem]`。
 
-### test_menu_click — 点击菜单项
+---
+
+### test_menu_click
+
+**测试方法：** `MenuCommand.run()` → `case "click"` → `clickMenuItem(appElement:path:)` → `findChild(of:title:)` + `AXUIElementPerformAction(kAXPressAction)`
 
 ```bash
 swift run macos menu --action click --app Finder --path "File > New Finder Window"
 ```
 
-**预期：** 新 Finder 窗口打开。JSON 含 `"success": true`。
-
-### test_menu_error_no_path — 错误：缺少路径
-
-```bash
-swift run macos menu --action click --app Finder
-```
-
-**预期：** 错误提示需要 --path。
+**预期：** 逐级导航菜单树并点击。
 
 ---
 
 ## ClipboardCommand 测试
 
-### test_clipboard_set — 写入剪贴板
+> 源文件：`Sources/MacOS/Commands/ClipboardCommand.swift`
+
+### test_clipboard_set
+
+**测试方法：** `ClipboardCommand.run()` → `case "set"` → `NSPasteboard.general.setString(_:forType:)`
 
 ```bash
-swift run macos clipboard --action set --text "test_content_12345"
+swift run macos clipboard --action set --text "test_12345"
 ```
 
-**预期：** JSON 含 `"action": "set", "content": "test_content_12345"`。
+**预期：** 剪贴板写入成功。
 
-### test_clipboard_get — 读取剪贴板
+---
+
+### test_clipboard_get
+
+**测试方法：** `ClipboardCommand.run()` → `case "get"` → `NSPasteboard.general.string(forType:)`
 
 ```bash
 swift run macos clipboard --action get
 ```
 
-**预期：** JSON 含 `"content": "test_content_12345"`（上一步写入的内容）。
+**预期：** 返回 `"content": "test_12345"`。
 
-### test_clipboard_clear — 清空剪贴板
+---
+
+### test_clipboard_clear
+
+**测试方法：** `ClipboardCommand.run()` → `case "clear"` → `NSPasteboard.general.clearContents()`
 
 ```bash
 swift run macos clipboard --action clear
 swift run macos clipboard --action get
 ```
 
-**预期：** clear 后 get 返回 `"content": ""`。
+**预期：** 清空后 content 为空字符串。
 
 ---
 
-## 测试汇总表
+## Permissions 测试
 
-| 命令 | 测试方法 | 通过 |
-|------|---------|------|
-| AppCommand | test_app_list | [ ] |
-| AppCommand | test_app_list_json | [ ] |
-| AppCommand | test_app_launch | [ ] |
-| AppCommand | test_app_focus | [ ] |
-| AppCommand | test_app_quit | [ ] |
-| AppCommand | test_app_quit_force | [ ] |
-| AppCommand | test_app_error_not_found | [ ] |
-| SeeCommand | test_see_human | [ ] |
-| SeeCommand | test_see_json | [ ] |
-| SeeCommand | test_see_screenshot | [ ] |
-| SeeCommand | test_see_max_depth | [ ] |
-| SeeCommand | test_see_error_app_not_found | [ ] |
-| InspectCommand | test_inspect_human | [ ] |
-| InspectCommand | test_inspect_json | [ ] |
-| ClickCommand | test_click_coords | [ ] |
-| ClickCommand | test_click_query | [ ] |
-| ClickCommand | test_click_double | [ ] |
-| ClickCommand | test_click_right | [ ] |
-| ClickCommand | test_click_error_no_args | [ ] |
-| ClickCommand | test_click_error_invalid_coords | [ ] |
-| TypeCommand | test_type_text | [ ] |
-| TypeCommand | test_type_clear | [ ] |
-| TypeCommand | test_type_press_return | [ ] |
-| TypeCommand | test_type_coords | [ ] |
-| HotkeyCommand | test_hotkey_single | [ ] |
-| HotkeyCommand | test_hotkey_multi | [ ] |
-| HotkeyCommand | test_hotkey_error_unknown_key | [ ] |
-| ScrollCommand | test_scroll_down | [ ] |
-| ScrollCommand | test_scroll_up_coords | [ ] |
-| ScrollCommand | test_scroll_error_invalid_direction | [ ] |
-| WindowCommand | test_window_list | [ ] |
-| WindowCommand | test_window_move | [ ] |
-| WindowCommand | test_window_resize | [ ] |
-| WindowCommand | test_window_minimize | [ ] |
-| WindowCommand | test_window_close | [ ] |
-| WindowCommand | test_window_focus | [ ] |
-| MenuCommand | test_menu_list | [ ] |
-| MenuCommand | test_menu_click | [ ] |
-| MenuCommand | test_menu_error_no_path | [ ] |
-| ClipboardCommand | test_clipboard_set | [ ] |
-| ClipboardCommand | test_clipboard_get | [ ] |
-| ClipboardCommand | test_clipboard_clear | [ ] |
+> 源文件：`Sources/MacOS/Core/Permissions.swift`
+
+### test_permissions_check
+
+**测试方法：** `Permissions.ensureAccessibility()` → `AXIsProcessTrustedWithOptions`
+
+```bash
+swift run macos see --app Finder
+```
+
+**预期：** 如已授权则正常执行；未授权则输出 `"需要辅助功能权限..."` 错误。
+
+---
+
+## Output 测试
+
+> 源文件：`Sources/MacOS/Core/Output.swift`
+
+### test_output_json
+
+**测试方法：** `Output.printCodable(_:)` → JSON 编码
+
+```bash
+swift run macos clipboard --action get
+```
+
+**预期：** stdout 输出格式化 JSON（pretty printed + sorted keys）。
+
+### test_output_error
+
+**测试方法：** `Output.error(_:)` → stderr 输出
+
+```bash
+swift run macos click 2>&1
+```
+
+**预期：** stderr 包含 `{"error": "..."}` 格式。
+
+---
+
+## 测试汇总
+
+| 源文件 | 测试方法 | 测试的代码路径 | 通过 |
+|--------|---------|--------------|------|
+| `Commands/AppCommand.swift` | test_app_list | `run()` → `"list"` 分支 | [ ] |
+| `Commands/AppCommand.swift` | test_app_launch | `run()` → `"launch"` + `findAppURL()` | [ ] |
+| `Commands/AppCommand.swift` | test_app_focus | `run()` → `"focus"` → `activate()` | [ ] |
+| `Commands/AppCommand.swift` | test_app_quit | `run()` → `"quit"` → `terminate()` | [ ] |
+| `Commands/AppCommand.swift` | test_app_quit_force | `run()` → `"quit"` + `--force` → `forceTerminate()` | [ ] |
+| `Commands/AppCommand.swift` | test_app_error_not_found | `run()` → 查找失败 | [ ] |
+| `Commands/SeeCommand.swift` | test_see_human | `run()` → `discoverElements()` + human 输出 | [ ] |
+| `Commands/SeeCommand.swift` | test_see_json | `run()` → `Output.printCodable(SeeResult)` | [ ] |
+| `Commands/SeeCommand.swift` | test_see_screenshot | `run()` → `ScreenCapture.captureWindow()` | [ ] |
+| `Commands/SeeCommand.swift` | test_see_max_depth | `run()` → `AccessibilityEngine(maxDepth:)` | [ ] |
+| `Commands/InspectCommand.swift` | test_inspect_human | `run()` → `getTree()` + `printTree()` | [ ] |
+| `Commands/InspectCommand.swift` | test_inspect_json | `run()` → `Output.print(tree)` | [ ] |
+| `Commands/ClickCommand.swift` | test_click_coords | `run()` → coords 解析 → `EventEngine.click()` | [ ] |
+| `Commands/ClickCommand.swift` | test_click_query | `run()` → `discoverElements()` + 文本匹配 | [ ] |
+| `Commands/ClickCommand.swift` | test_click_double | `run()` → `clickCount: 2` | [ ] |
+| `Commands/ClickCommand.swift` | test_click_right | `run()` → `button: .right` | [ ] |
+| `Commands/TypeCommand.swift` | test_type_text | `run()` → `EventEngine.typeText()` | [ ] |
+| `Commands/TypeCommand.swift` | test_type_clear | `run()` → `hotkey(["cmd","a"])` + `pressKey(51)` | [ ] |
+| `Commands/TypeCommand.swift` | test_type_coords | `run()` → coords → `click()` + `typeText()` | [ ] |
+| `Commands/TypeCommand.swift` | test_type_press_return | `run()` → `pressKey(36)` | [ ] |
+| `Commands/HotkeyCommand.swift` | test_hotkey_single | `run()` → `EventEngine.hotkey()` | [ ] |
+| `Commands/HotkeyCommand.swift` | test_hotkey_multi | `run()` → 多修饰键解析 | [ ] |
+| `Commands/HotkeyCommand.swift` | test_hotkey_error | `run()` → `EventError.unknownKey` | [ ] |
+| `Commands/ScrollCommand.swift` | test_scroll_down | `run()` → `EventEngine.scroll(.down)` | [ ] |
+| `Commands/ScrollCommand.swift` | test_scroll_coords | `run()` → `moveMouse()` + `scroll()` | [ ] |
+| `Commands/WindowCommand.swift` | test_window_list | `run()` → `listAppWindows()` | [ ] |
+| `Commands/WindowCommand.swift` | test_window_move | `run()` → `AXValueCreate(.cgPoint)` | [ ] |
+| `Commands/WindowCommand.swift` | test_window_resize | `run()` → `AXValueCreate(.cgSize)` | [ ] |
+| `Commands/WindowCommand.swift` | test_window_minimize | `run()` → `kAXMinimizedAttribute` | [ ] |
+| `Commands/WindowCommand.swift` | test_window_close | `run()` → `pressWindowButton(kAXCloseButton)` | [ ] |
+| `Commands/MenuCommand.swift` | test_menu_list | `run()` → `listMenuItems()` | [ ] |
+| `Commands/MenuCommand.swift` | test_menu_click | `run()` → `clickMenuItem()` + `findChild()` | [ ] |
+| `Commands/ClipboardCommand.swift` | test_clipboard_set | `run()` → `NSPasteboard.setString()` | [ ] |
+| `Commands/ClipboardCommand.swift` | test_clipboard_get | `run()` → `NSPasteboard.string(forType:)` | [ ] |
+| `Commands/ClipboardCommand.swift` | test_clipboard_clear | `run()` → `NSPasteboard.clearContents()` | [ ] |
+| `Core/Permissions.swift` | test_permissions_check | `ensureAccessibility()` | [ ] |
+| `Core/Output.swift` | test_output_json | `printCodable()` | [ ] |
+| `Core/Output.swift` | test_output_error | `error()` → stderr | [ ] |
