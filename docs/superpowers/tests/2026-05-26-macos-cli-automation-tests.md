@@ -1,338 +1,189 @@
 # macOS CLI 自动化工具 — 测试文档
 
-本文档提供可复现的测试步骤，验证所有 10 个命令正常工作。
+本文档提供可复现的测试步骤，验证所有命令方法正常工作。
 
 ## 前置条件
 
 1. macOS 14+ (Sonoma)
 2. 已编译：`swift build -c release`
-3. 二进制可用：`.build/release/macos` 或已加入 PATH
+3. 二进制可用：`swift run macos` 或 `.build/release/macos`
 4. 辅助功能权限已授予（系统设置 > 隐私与安全性 > 辅助功能）
-5. Finder 应用正在运行
 
-以下用 `macos` 代表 CLI 路径（如未加入 PATH 请替换为 `.build/release/macos`）。
-
----
-
-## 测试 1：帮助信息
-
-```bash
-macos --help
-```
-
-**预期：** 显示所有 10 个子命令及描述。
-
-```bash
-macos see --help
-```
-
-**预期：** 显示 see 命令的 --app、--screenshot、--max-depth 等参数说明。
+以下用 `macos` 代表 CLI 路径。本地开发可替换为 `swift run macos`。
 
 ---
 
-## 测试 2：app — 应用列表
+## AppCommand 测试
+
+### test_app_list — 列出运行中应用
 
 ```bash
 macos app --action list --human
 ```
 
-**预期：** 输出所有运行中的 GUI 应用列表，格式如：
+**预期：** 输出所有 GUI 应用，`*` 标记活动应用，格式 `名称 (PID: xxx)`。
+
+### test_app_list_json — JSON 格式应用列表
+
+```bash
+macos app --action list
 ```
-  访达 (PID: 519)
-* Cursor (PID: 25539)
-```
 
-`*` 标记当前活动应用。
+**预期：** JSON 数组，每项含 `name`、`pid`、`active` 字段。
 
----
-
-## 测试 3：app — 启动应用
+### test_app_launch — 启动应用
 
 ```bash
 macos app --action launch --name TextEdit --wait
 ```
 
-**预期：** 输出 JSON 包含 `"action": "launch"` 和 PID。TextEdit 窗口出现。
+**预期：** JSON 含 `"action": "launch"`、`"pid": <number>`。TextEdit 窗口出现。
 
----
-
-## 测试 4：see — 元素发现
-
-```bash
-macos see --app TextEdit --human
-```
-
-**预期：** 输出 TextEdit 的可交互元素列表，如：
-```
-应用: TextEdit | 元素数: 15
-  B1 [AXButton] 关闭
-  B2 [AXButton] 最小化
-  T1 [AXTextArea]
-```
-
----
-
-## 测试 5：see — JSON 输出
-
-```bash
-macos see --app TextEdit
-```
-
-**预期：** 输出 JSON 格式，包含 `app`、`elements` 数组，每个元素有 `id`、`role`、`title`、`frame`。
-
----
-
-## 测试 6：see — 截图
-
-```bash
-macos see --app TextEdit --screenshot /tmp/test-screenshot.png
-```
-
-**预期：** `/tmp/test-screenshot.png` 文件生成，可用预览打开。
-
-验证：
-```bash
-file /tmp/test-screenshot.png
-```
-输出应包含 `PNG image data`。
-
----
-
-## 测试 7：inspect — AX 树结构
-
-```bash
-macos inspect --app TextEdit --max-depth 3 --human
-```
-
-**预期：** 输出缩进的树形结构：
-```
-AXApplication ("TextEdit")
-  AXWindow ("未命名")
-    AXToolbar
-      AXButton ("关闭")
-      ...
-```
-
----
-
-## 测试 8：click — 坐标点击
-
-先获取元素坐标：
-```bash
-macos see --app TextEdit
-```
-
-从输出中找到文本区域的 frame（如 `{"x": 50, "y": 100, "w": 600, "h": 400}`），计算中心点后点击：
-
-```bash
-macos click --coords 350,300
-```
-
-**预期：** 输出 `"clicked": true`，TextEdit 文本区域获得焦点。
-
----
-
-## 测试 9：click — 文本查找点击
-
-```bash
-macos click --query "关闭" --app TextEdit
-```
-
-**预期：** TextEdit 关闭按钮被点击（窗口可能关闭或弹出保存对话框）。
-
----
-
-## 测试 10：type — 输入文本
-
-先确保 TextEdit 打开（若已关闭，重新启动）：
-```bash
-macos app --action launch --name TextEdit --wait
-macos click --coords 350,300
-macos type --text "Hello, macOS Automation!"
-```
-
-**预期：** TextEdit 中出现 "Hello, macOS Automation!" 文本。
-
----
-
-## 测试 11：type — 清空并输入
-
-```bash
-macos type --text "New content" --clear --press-return
-```
-
-**预期：** 先清空原有内容，输入 "New content"，然后换行。
-
----
-
-## 测试 12：hotkey — 快捷键
-
-```bash
-macos hotkey --keys cmd,a
-```
-
-**预期：** 全选操作（TextEdit 中文本全部选中）。
-
-```bash
-macos hotkey --keys cmd,c
-```
-
-**预期：** 复制到剪贴板。
-
----
-
-## 测试 13：clipboard — 读取
-
-```bash
-macos clipboard --action get
-```
-
-**预期：** 输出刚复制的文本内容。
-
----
-
-## 测试 14：clipboard — 写入
-
-```bash
-macos clipboard --action set --text "测试剪贴板内容"
-macos clipboard --action get
-```
-
-**预期：** 第二次输出 `"content": "测试剪贴板内容"`。
-
----
-
-## 测试 15：clipboard — 清空
-
-```bash
-macos clipboard --action clear
-macos clipboard --action get
-```
-
-**预期：** 清空后 content 为空字符串。
-
----
-
-## 测试 16：scroll — 滚动
-
-```bash
-macos scroll --direction down --amount 5
-```
-
-**预期：** 当前鼠标位置向下滚动 5 行。
-
-```bash
-macos scroll --direction up --amount 3 --coords 400,300
-```
-
-**预期：** 鼠标移动到 (400,300) 后向上滚动 3 行。
-
----
-
-## 测试 17：window — 移动窗口
-
-```bash
-macos window --action move --app TextEdit --x 100 --y 100
-```
-
-**预期：** TextEdit 窗口移动到屏幕 (100, 100) 位置。
-
----
-
-## 测试 18：window — 缩放窗口
-
-```bash
-macos window --action resize --app TextEdit --width 800 --height 600
-```
-
-**预期：** TextEdit 窗口大小变为 800x600。
-
----
-
-## 测试 19：window — 列出窗口
-
-```bash
-macos window --action list --app TextEdit
-```
-
-**预期：** 输出 JSON 数组，包含 TextEdit 的窗口信息（index、title、app）。
-
----
-
-## 测试 20：menu — 列出菜单
-
-```bash
-macos menu --action list --app TextEdit
-```
-
-**预期：** 输出 JSON 数组，每项包含 `menu`（菜单名）和 `items`（子菜单项数组）。
-
----
-
-## 测试 21：menu — 点击菜单
-
-```bash
-macos menu --action click --app TextEdit --path "Format > Font > Bold"
-```
-
-**预期：** 文本切换为粗体（或输出成功 JSON）。
-
----
-
-## 测试 22：app — 聚焦应用
+### test_app_focus — 聚焦应用
 
 ```bash
 macos app --action focus --name Finder
 ```
 
-**预期：** Finder 成为前台应用。
+**预期：** Finder 成为前台应用。JSON 含 `"action": "focus"`。
 
----
-
-## 测试 23：app — 退出应用
+### test_app_quit — 正常退出
 
 ```bash
 macos app --action quit --name TextEdit
 ```
 
-**预期：** TextEdit 退出（可能弹出保存对话框）。
+**预期：** TextEdit 退出。JSON 含 `"action": "quit"`。
 
-```bash
-macos app --action quit --name TextEdit --force
-```
-
-**预期：** TextEdit 强制退出，不弹出对话框。
-
----
-
-## 测试 24：window — 最小化/关闭
+### test_app_quit_force — 强制退出
 
 ```bash
 macos app --action launch --name TextEdit --wait
-macos window --action minimize --app TextEdit
+macos app --action quit --name TextEdit --force
 ```
 
-**预期：** TextEdit 窗口最小化到 Dock。
+**预期：** TextEdit 立即退出，无保存对话框。
+
+### test_app_error_not_found — 错误：应用不存在
 
 ```bash
-macos window --action close --app TextEdit
+macos app --action focus --name NonExistentApp123
 ```
 
-**预期：** TextEdit 窗口关闭。
+**预期：** stderr 输出 `{"error": "应用未运行: NonExistentApp123"}`，退出码非 0。
 
 ---
 
-## 错误场景测试
+## SeeCommand 测试
 
-### 应用不存在
+### test_see_human — 人类可读元素列表
 
 ```bash
-macos see --app NonExistentApp
+macos see --app Finder --human
 ```
 
-**预期：** stderr 输出错误 JSON：`{"error": "应用未找到: NonExistentApp"}`，退出码非 0。
+**预期：** 输出 `应用: 访达 | 元素数: N`，后跟缩进的元素列表 `ID [角色] 标题`。
 
-### 无效坐标格式
+### test_see_json — JSON 格式元素列表
+
+```bash
+macos see --app Finder
+```
+
+**预期：** JSON 含 `app`、`elements` 数组。每个元素含 `id`、`role`、`frame`（x/y/w/h）。
+
+### test_see_screenshot — 附带截图
+
+```bash
+macos see --app Finder --screenshot /tmp/test-see.png
+```
+
+**预期：** `/tmp/test-see.png` 生成。验证：`file /tmp/test-see.png` → `PNG image data`。
+
+### test_see_max_depth — 自定义遍历深度
+
+```bash
+macos see --app Finder --max-depth 3 --human
+```
+
+**预期：** 元素数量少于默认深度（因为只遍历 3 层）。
+
+### test_see_error_app_not_found — 错误：应用不存在
+
+```bash
+macos see --app FakeApp999
+```
+
+**预期：** stderr 输出错误 JSON，退出码非 0。
+
+---
+
+## InspectCommand 测试
+
+### test_inspect_human — 人类可读 AX 树
+
+```bash
+macos inspect --app Finder --max-depth 3 --human
+```
+
+**预期：** 缩进树形输出，如 `AXApplication ("访达")\n  AXWindow (...)\n    ...`。
+
+### test_inspect_json — JSON 格式 AX 树
+
+```bash
+macos inspect --app Finder --max-depth 2
+```
+
+**预期：** JSON 含 `app` 和 `tree`，tree 为嵌套结构含 `role`、`title`、`children`。
+
+---
+
+## ClickCommand 测试
+
+### test_click_coords — 坐标点击
+
+```bash
+macos app --action launch --name TextEdit --wait
+macos see --app TextEdit
+# 从输出找到文本区域 frame，计算中心点
+macos click --coords 400,300
+```
+
+**预期：** JSON 含 `"clicked": true`、坐标信息。TextEdit 获得焦点。
+
+### test_click_query — 文本查找点击
+
+```bash
+macos click --query "最小化" --app TextEdit
+```
+
+**预期：** TextEdit 窗口最小化。JSON 含 `"clicked": true`。
+
+### test_click_double — 双击
+
+```bash
+macos click --coords 400,300 --double
+```
+
+**预期：** JSON 含 `"click_count": 2`。
+
+### test_click_right — 右键点击
+
+```bash
+macos click --coords 400,300 --right
+```
+
+**预期：** JSON 含 `"button": "right"`。弹出右键菜单。
+
+### test_click_error_no_args — 错误：缺少参数
+
+```bash
+macos click
+```
+
+**预期：** 错误提示需要 --query 或 --coords。
+
+### test_click_error_invalid_coords — 错误：无效坐标
 
 ```bash
 macos click --coords abc
@@ -340,15 +191,65 @@ macos click --coords abc
 
 **预期：** 错误提示坐标格式不对。
 
-### 缺少必需参数
+---
+
+## TypeCommand 测试
+
+### test_type_text — 基础文本输入
 
 ```bash
-macos click
+macos app --action launch --name TextEdit --wait
+macos click --coords 400,300
+macos type --text "Hello macOS"
 ```
 
-**预期：** 错误提示需要指定 --query 或 --coords。
+**预期：** TextEdit 出现 "Hello macOS"。JSON 含 `"typed": "Hello macOS"`。
 
-### 未知快捷键
+### test_type_clear — 清空后输入
+
+```bash
+macos type --text "Replaced" --clear
+```
+
+**预期：** 原文被替换为 "Replaced"。JSON 含 `"cleared": true`。
+
+### test_type_press_return — 输入后回车
+
+```bash
+macos type --text "Line1" --press-return
+```
+
+**预期：** 输入后光标换行。JSON 含 `"pressed_return": true`。
+
+### test_type_coords — 先聚焦坐标后输入
+
+```bash
+macos type --text "Focused" --coords 400,300
+```
+
+**预期：** 先点击 (400,300) 聚焦，再输入文本。
+
+---
+
+## HotkeyCommand 测试
+
+### test_hotkey_single — 单键快捷键
+
+```bash
+macos hotkey --keys cmd,a
+```
+
+**预期：** 全选操作。JSON 含 `"pressed": "cmd,a"`。
+
+### test_hotkey_multi — 多修饰键组合
+
+```bash
+macos hotkey --keys cmd,shift,t
+```
+
+**预期：** 对应快捷键触发。JSON 含 `"pressed": "cmd,shift,t"`。
+
+### test_hotkey_error_unknown_key — 错误：未知按键
 
 ```bash
 macos hotkey --keys cmd,xyz
@@ -358,35 +259,186 @@ macos hotkey --keys cmd,xyz
 
 ---
 
-## 测试汇总
+## ScrollCommand 测试
 
-| # | 命令 | 测试项 | 通过 |
-|---|------|--------|------|
-| 1 | --help | 帮助信息 | [ ] |
-| 2 | app list | 应用列表 | [ ] |
-| 3 | app launch | 启动应用 | [ ] |
-| 4 | see --human | 元素发现（人类格式） | [ ] |
-| 5 | see (json) | 元素发现（JSON） | [ ] |
-| 6 | see --screenshot | 截图 | [ ] |
-| 7 | inspect | AX 树 | [ ] |
-| 8 | click --coords | 坐标点击 | [ ] |
-| 9 | click --query | 文本查找点击 | [ ] |
-| 10 | type --text | 输入文本 | [ ] |
-| 11 | type --clear | 清空并输入 | [ ] |
-| 12 | hotkey | 快捷键 | [ ] |
-| 13 | clipboard get | 读取剪贴板 | [ ] |
-| 14 | clipboard set | 写入剪贴板 | [ ] |
-| 15 | clipboard clear | 清空剪贴板 | [ ] |
-| 16 | scroll | 滚动 | [ ] |
-| 17 | window move | 移动窗口 | [ ] |
-| 18 | window resize | 缩放窗口 | [ ] |
-| 19 | window list | 列出窗口 | [ ] |
-| 20 | menu list | 列出菜单 | [ ] |
-| 21 | menu click | 点击菜单 | [ ] |
-| 22 | app focus | 聚焦应用 | [ ] |
-| 23 | app quit | 退出应用 | [ ] |
-| 24 | window minimize/close | 最小化/关闭 | [ ] |
-| E1 | 错误：应用不存在 | 友好错误信息 | [ ] |
-| E2 | 错误：无效坐标 | 友好错误信息 | [ ] |
-| E3 | 错误：缺少参数 | 友好错误信息 | [ ] |
-| E4 | 错误：未知按键 | 友好错误信息 | [ ] |
+### test_scroll_down — 向下滚动
+
+```bash
+macos scroll --direction down --amount 5
+```
+
+**预期：** 当前位置向下滚动。JSON 含 `"direction": "down", "amount": 5`。
+
+### test_scroll_up_coords — 指定坐标滚动
+
+```bash
+macos scroll --direction up --amount 3 --coords 400,300
+```
+
+**预期：** 鼠标先移到 (400,300)，再向上滚动 3 行。
+
+### test_scroll_error_invalid_direction — 错误：无效方向
+
+```bash
+macos scroll --direction diagonal
+```
+
+**预期：** 错误提示使用 up/down/left/right。
+
+---
+
+## WindowCommand 测试
+
+### test_window_list — 列出应用窗口
+
+```bash
+macos window --action list --app Finder
+```
+
+**预期：** JSON 数组，每项含 `index`、`title`、`app`。
+
+### test_window_move — 移动窗口
+
+```bash
+macos window --action move --app TextEdit --x 200 --y 200
+```
+
+**预期：** 窗口移到 (200, 200)。JSON 含 `"success": true`。
+
+### test_window_resize — 缩放窗口
+
+```bash
+macos window --action resize --app TextEdit --width 800 --height 600
+```
+
+**预期：** 窗口变为 800x600。JSON 含 `"success": true`。
+
+### test_window_minimize — 最小化
+
+```bash
+macos window --action minimize --app TextEdit
+```
+
+**预期：** 窗口最小化到 Dock。
+
+### test_window_close — 关闭窗口
+
+```bash
+macos window --action close --app TextEdit
+```
+
+**预期：** 窗口关闭。
+
+### test_window_focus — 聚焦窗口
+
+```bash
+macos window --action focus --app TextEdit --title "未命名"
+```
+
+**预期：** 匹配标题的窗口获得焦点。
+
+---
+
+## MenuCommand 测试
+
+### test_menu_list — 列出菜单项
+
+```bash
+macos menu --action list --app Finder
+```
+
+**预期：** JSON 数组，每项含 `menu`（如 "File"）和 `items`（子菜单项名称数组）。
+
+### test_menu_click — 点击菜单项
+
+```bash
+macos menu --action click --app Finder --path "File > New Finder Window"
+```
+
+**预期：** 新 Finder 窗口打开。JSON 含 `"success": true`。
+
+### test_menu_error_no_path — 错误：缺少路径
+
+```bash
+macos menu --action click --app Finder
+```
+
+**预期：** 错误提示需要 --path。
+
+---
+
+## ClipboardCommand 测试
+
+### test_clipboard_set — 写入剪贴板
+
+```bash
+macos clipboard --action set --text "test_content_12345"
+```
+
+**预期：** JSON 含 `"action": "set", "content": "test_content_12345"`。
+
+### test_clipboard_get — 读取剪贴板
+
+```bash
+macos clipboard --action get
+```
+
+**预期：** JSON 含 `"content": "test_content_12345"`（上一步写入的内容）。
+
+### test_clipboard_clear — 清空剪贴板
+
+```bash
+macos clipboard --action clear
+macos clipboard --action get
+```
+
+**预期：** clear 后 get 返回 `"content": ""`。
+
+---
+
+## 测试汇总表
+
+| 命令 | 测试方法 | 通过 |
+|------|---------|------|
+| AppCommand | test_app_list | [ ] |
+| AppCommand | test_app_list_json | [ ] |
+| AppCommand | test_app_launch | [ ] |
+| AppCommand | test_app_focus | [ ] |
+| AppCommand | test_app_quit | [ ] |
+| AppCommand | test_app_quit_force | [ ] |
+| AppCommand | test_app_error_not_found | [ ] |
+| SeeCommand | test_see_human | [ ] |
+| SeeCommand | test_see_json | [ ] |
+| SeeCommand | test_see_screenshot | [ ] |
+| SeeCommand | test_see_max_depth | [ ] |
+| SeeCommand | test_see_error_app_not_found | [ ] |
+| InspectCommand | test_inspect_human | [ ] |
+| InspectCommand | test_inspect_json | [ ] |
+| ClickCommand | test_click_coords | [ ] |
+| ClickCommand | test_click_query | [ ] |
+| ClickCommand | test_click_double | [ ] |
+| ClickCommand | test_click_right | [ ] |
+| ClickCommand | test_click_error_no_args | [ ] |
+| ClickCommand | test_click_error_invalid_coords | [ ] |
+| TypeCommand | test_type_text | [ ] |
+| TypeCommand | test_type_clear | [ ] |
+| TypeCommand | test_type_press_return | [ ] |
+| TypeCommand | test_type_coords | [ ] |
+| HotkeyCommand | test_hotkey_single | [ ] |
+| HotkeyCommand | test_hotkey_multi | [ ] |
+| HotkeyCommand | test_hotkey_error_unknown_key | [ ] |
+| ScrollCommand | test_scroll_down | [ ] |
+| ScrollCommand | test_scroll_up_coords | [ ] |
+| ScrollCommand | test_scroll_error_invalid_direction | [ ] |
+| WindowCommand | test_window_list | [ ] |
+| WindowCommand | test_window_move | [ ] |
+| WindowCommand | test_window_resize | [ ] |
+| WindowCommand | test_window_minimize | [ ] |
+| WindowCommand | test_window_close | [ ] |
+| WindowCommand | test_window_focus | [ ] |
+| MenuCommand | test_menu_list | [ ] |
+| MenuCommand | test_menu_click | [ ] |
+| MenuCommand | test_menu_error_no_path | [ ] |
+| ClipboardCommand | test_clipboard_set | [ ] |
+| ClipboardCommand | test_clipboard_get | [ ] |
+| ClipboardCommand | test_clipboard_clear | [ ] |
