@@ -111,13 +111,15 @@ swift run macos app --action focus --name NonExistentApp123
 **参数说明与测试命令：**
 
 
-| 参数             | 含义              | 测试命令                                                                    |
-| -------------- | --------------- | ----------------------------------------------------------------------- |
-| `--app`        | 目标应用名（省略=前台应用）  | `swift run macos see --app Finder`                                      |
-| `--screenshot` | 截图保存路径          | `swift run macos see --app Finder --screenshot /tmp/see.png`            |
-| `--annotate`   | 截图上标注元素 ID      | `swift run macos see --app Finder --screenshot /tmp/see.png --annotate` |
-| `--max-depth`  | AX 树遍历深度（默认 10） | `swift run macos see --app Finder --max-depth 3`                        |
-| `--human`      | 人类可读格式输出        | `swift run macos see --app Finder --human`                              |
+| 参数               | 含义                          | 测试命令                                                                    |
+| ---------------- | --------------------------- | ----------------------------------------------------------------------- |
+| `--app`          | 目标应用名（省略=前台应用）              | `swift run macos see --app Finder`                                      |
+| `--screenshot`   | 截图保存路径                      | `swift run macos see --app Finder --screenshot /tmp/see.png`            |
+| `--annotate`     | 截图上标注元素 ID                  | `swift run macos see --app Finder --screenshot /tmp/see.png --annotate` |
+| `--max-depth`    | AX 树遍历深度（默认 10）             | `swift run macos see --app Finder --max-depth 3`                        |
+| `--web-content`  | 包含 Web 视图内容（AXWebArea 子元素） | `swift run macos see --app Finder --web-content`                        |
+| `--all`          | 收集所有元素（不过滤角色）              | `swift run macos see --app Finder --all`                                |
+| `--human`        | 人类可读格式输出                    | `swift run macos see --app Finder --human`                              |
 
 
 ### test_see_human
@@ -183,11 +185,12 @@ swift run macos see --app Finder --max-depth 2 --human
 **参数说明与测试命令：**
 
 
-| 参数            | 含义             | 测试命令                                                 |
-| ------------- | -------------- | ---------------------------------------------------- |
-| `--app`       | 目标应用名（省略=前台应用） | `swift run macos inspect --app Finder`               |
-| `--max-depth` | 树最大深度（默认 5）    | `swift run macos inspect --app Finder --max-depth 3` |
-| `--human`     | 缩进树形文本输出       | `swift run macos inspect --app Finder --human`       |
+| 参数            | 含义                         | 测试命令                                                            |
+| ------------- | -------------------------- | --------------------------------------------------------------- |
+| `--app`       | 目标应用名（省略=前台应用）             | `swift run macos inspect --app Finder`                          |
+| `--max-depth` | 树最大深度（默认 5）                | `swift run macos inspect --app Finder --max-depth 3`            |
+| `--detailed`  | 显示详细属性（frame/value/description） | `swift run macos inspect --app Finder --detailed --human`       |
+| `--human`     | 缩进树形文本输出                   | `swift run macos inspect --app Finder --human`                  |
 
 
 ### test_inspect_human
@@ -211,6 +214,233 @@ swift run macos inspect --app Finder --max-depth 2
 ```
 
 **预期：** JSON 含 `tree.role`、`tree.children[]`。
+
+---
+
+### test_see_web_content
+
+**测试方法：** `SeeCommand.run()` → `AccessibilityEngine.discoverElements(pid:, webContent: true)` + `isWebContent(role:)` + `traverse()` Web 区域追踪
+
+> 新增于 OPT-002
+
+```bash
+swift run macos see --app Finder --web-content --human
+```
+
+**预期：** 元素数量 ≥ 默认模式（Web 内容模式额外收集 AXWebArea 内部的 AXStaticText/AXGroup/AXImage 等）。对于 Electron 应用效果更显著：
+
+```bash
+# 对比：原始模式 vs Web 内容模式（需要钉钉等 Electron 应用运行）
+swift run macos see --app "钉钉" --human | head -3
+# → 应用: 钉钉 | 元素数: ~30
+
+swift run macos see --app "钉钉" --web-content --human | head -3
+# → 应用: 钉钉 | 元素数: ~100+
+```
+
+**验证要点：**
+- Web 内容模式的 `maxDepth` 自动提升至 15，`maxElements` 提升至 2000
+- 新增的元素 ID 使用 Web 角色前缀（X=AXStaticText, G=AXGroup, I=AXImage, W=AXWebArea, H=AXHeading）
+- 元素包含 `description` 字段（如 `desc="收起分组"`）
+- 非 Electron 应用（如 Finder）也能正常工作，不会报错
+
+---
+
+### test_see_web_content_json
+
+**测试方法：** `SeeCommand.run()` → `Output.printCodable(SeeResult(...))` 含 `description` 字段
+
+```bash
+swift run macos see --app Finder --web-content | python3 -c "import json,sys; d=json.load(sys.stdin); print(len(d['elements']), 'elements'); print([e for e in d['elements'] if e.get('description')][:3])"
+```
+
+**预期：** JSON 输出的 `UIElement` 结构包含 `description` 字段（可为 null）。
+
+---
+
+### test_see_web_content_electron
+
+**测试方法：** 在 Electron 应用（钉钉）上验证 Web 视图内容发现
+
+> 前置条件：钉钉已运行且已登录
+
+```bash
+swift run macos see --app "钉钉" --web-content 2>&1 | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+els = data.get('elements', [])
+print(f'总元素数: {len(els)}')
+# 统计各角色
+roles = {}
+for e in els:
+    r = e.get('role', '')
+    roles[r] = roles.get(r, 0) + 1
+for r, c in sorted(roles.items(), key=lambda x: -x[1]):
+    print(f'  {r}: {c}')
+# 输出有文字的元素
+print('有文字内容的元素:')
+for e in els:
+    title = e.get('title', '')
+    value = e.get('value', '')
+    desc = e.get('description', '')
+    text = title or value or desc
+    if text and len(text) > 1:
+        f = e.get('frame', {})
+        print(f'  {e[\"id\"]} [{f.get(\"x\",0):.0f},{f.get(\"y\",0):.0f}] {repr(text[:50])}')
+"
+```
+
+**预期：**
+- 总元素数 > 50（原始模式通常 < 30）
+- 包含 AXStaticText 角色的元素（对话联系人名称）
+- 包含 AXTextArea 角色的元素（消息内容）
+- 元素的 `frame` 坐标有效（x/y/w/h > 0）
+
+---
+
+### test_see_all
+
+**测试方法：** `SeeCommand.run()` → `AccessibilityEngine.discoverElements(pid:, mode: .all)` 全量收集
+
+> 新增于 OPT-003
+
+```bash
+swift run macos see --app Finder --all --human | head -5
+```
+
+**预期：** 元素数量远大于默认模式和 web-content 模式，包含所有角色的元素。
+
+```bash
+# Electron 应用效果最显著
+swift run macos see --app "钉钉" --all 2>&1 | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+els = d['elements']
+print(f'总元素: {len(els)}')
+with_text = [e for e in els if e.get('title') or e.get('value') or e.get('description') or e.get('placeholder')]
+print(f'有文字: {len(with_text)}')
+"
+# 预期: 总元素 > 500, 有文字 > 300
+```
+
+**验证要点：**
+- `maxDepth` 自动提升至 15，`maxElements` 提升至 5000
+- 所有角色均被收集（包括 AXRow、AXCell、AXScrollArea 等结构元素）
+- 含 placeholder、help、subrole 等扩展属性
+
+---
+
+### test_see_all_placeholder
+
+**测试方法：** 验证 `UIElement.placeholder` 字段（`kAXPlaceholderValueAttribute`）
+
+> 新增于 OPT-003
+
+```bash
+swift run macos see --app "钉钉" --all 2>&1 | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+for e in d['elements']:
+    ph = e.get('placeholder','')
+    if ph:
+        f = e.get('frame',{})
+        print(f'{e[\"id\"]} | {e[\"role\"]} | [{f.get(\"x\",0):.0f},{f.get(\"y\",0):.0f}] | placeholder={repr(ph)}')
+"
+```
+
+**预期：** 输出搜索框占位文本 `placeholder='搜索或提问 (⌘F)'`。
+
+---
+
+### test_see_all_subrole
+
+**测试方法：** 验证 `UIElement.subrole`、`help` 字段
+
+```bash
+swift run macos see --app "钉钉" --all 2>&1 | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+for e in d['elements']:
+    sr = e.get('subrole','')
+    help_t = e.get('help','')
+    if sr or help_t:
+        f = e.get('frame',{})
+        print(f'{e[\"id\"]} | {e[\"role\"]} | sub={sr} help={repr(help_t[:40])}')
+" | head -15
+```
+
+**预期：** 
+- 窗口控制按钮有 subrole（AXCloseButton/AXMinimizeButton/AXFullScreenButton）
+- 全屏按钮有 help 文本
+
+---
+
+### test_inspect_detailed
+
+**测试方法：** `InspectCommand.run()` → `AccessibilityEngine.getTree(pid:maxDepth:detailed: true)` + `buildTree()` 增强属性
+
+> 新增于 OPT-002
+
+```bash
+swift run macos inspect --app Finder --max-depth 3 --detailed --human
+```
+
+**预期：** 输出包含 `val="..."` `desc="..."` `[x,y wxh]` 信息：
+
+```
+AXApplication ("Finder")
+  AXWindow ("访达") [0,38 920x600]
+    AXButton ("关闭") desc="关闭" [7,39 14x16]
+    AXToolbar [0,38 920x50]
+```
+
+**验证要点：**
+- 每个节点包含 `frame` 信息（`[x,y wxh]` 格式）
+- 有值的节点显示 `val="..."`（超过 40 字符截断并加 `...`）
+- 有描述的节点显示 `desc="..."`
+
+---
+
+### test_inspect_detailed_json
+
+**测试方法：** `InspectCommand.run()` → `Output.print(result)` JSON 含 `frame`/`value`/`description`
+
+```bash
+swift run macos inspect --app Finder --max-depth 2 --detailed | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+tree = data.get('tree', {})
+def check_node(node, depth=0):
+    has_frame = 'frame' in node
+    if has_frame:
+        f = node['frame']
+        assert 'x' in f and 'y' in f and 'w' in f and 'h' in f, 'frame missing fields'
+        print(f'  depth={depth} {node[\"role\"]} frame=[{f[\"x\"]},{f[\"y\"]} {f[\"w\"]}x{f[\"h\"]}]')
+    for child in node.get('children', []):
+        check_node(child, depth+1)
+check_node(tree)
+print('OK: all frames have x/y/w/h')
+"
+```
+
+**预期：** JSON 树节点的 `frame` 对象包含 `x`/`y`/`w`/`h` 四个数值字段。
+
+---
+
+### test_inspect_detailed_electron
+
+**测试方法：** 在 Electron 应用上验证详细 AX 树输出
+
+> 前置条件：钉钉已运行
+
+```bash
+swift run macos inspect --app "钉钉" --max-depth 8 --detailed --human 2>&1 | head -30
+```
+
+**预期：** 
+- 每个节点包含坐标信息 `[x,y wxh]`
+- Web 视图元素（如 AXStaticText）也有 `val="..."` 和坐标
+- 可以通过坐标确定元素在屏幕上的位置
 
 ---
 
@@ -662,9 +892,139 @@ swift run macos click 2>&1
 
 ---
 
+## OcrCommand 测试
+
+> 源文件：`Sources/MacOS/Commands/OcrCommand.swift`、`Sources/MacOS/Core/OCREngine.swift`
+
+**参数说明与测试命令：**
+
+| 参数 | 含义 | 测试命令 |
+|------|------|---------|
+| `--app <name>` | 对应用窗口 OCR | `swift run macos ocr --app "钉钉"` |
+| `--region "x,y,w,h"` | 对屏幕区域 OCR | `swift run macos ocr --region "300,100,500,400"` |
+| `--query <text>` | 按文字过滤 | `swift run macos ocr --app "钉钉" --query "何占争"` |
+| `--human` | 人类可读输出 | `swift run macos ocr --app "钉钉" --human` |
+
+### test_ocr_app_human
+
+**测试方法：** `OcrCommand.run()` → `ScreenCapture.captureWindowImage()` → `OCREngine.recognize()` → human 输出
+
+```bash
+swift run macos ocr --app Finder --human
+```
+
+**预期：** 输出 `应用: 访达 | 识别: N 个文字区域`，后跟每行一个文字区域含置信度、文本、坐标。
+
+---
+
+### test_ocr_app_json
+
+**测试方法：** `OcrCommand.run()` → `Output.printCodable(OcrResult)` JSON 输出
+
+```bash
+swift run macos ocr --app Finder
+```
+
+**预期：** JSON 含 `app`、`count`、`elements`（每个含 `text`/`confidence`/`frame`）。
+
+---
+
+### test_ocr_query
+
+**测试方法：** `OcrCommand.run()` → OCR → `filterResults()` 按 `localizedCaseInsensitiveContains` 过滤
+
+```bash
+swift run macos ocr --app "钉钉" --query "何占争"
+```
+
+**预期：** 仅返回文本包含"何占争"的元素；`count` 等于过滤后数量。
+
+---
+
+### test_ocr_region
+
+**测试方法：** `OcrCommand.run()` → `OCREngine.captureRegion()` + `recognize(screenRect:)` 区域截图 + 坐标映射
+
+```bash
+swift run macos ocr --region "600,80,400,300" --human
+```
+
+**预期：** 识别指定屏幕区域的文字，坐标相对于屏幕（非图像），可直接用于 `click --coords`。
+
+---
+
+### test_ocr_electron_popup
+
+**测试方法：** 打开 Electron 应用弹框 → OCR 识别 AX 树不可见的内容
+
+```bash
+# 1. 聚焦钉钉
+swift run macos app --action focus --name "钉钉"
+# 2. 点击搜索框，触发搜索弹框
+swift run macos click --coords 760,53
+sleep 1
+# 3. OCR 识别弹框中的 Tab 标签（AX 树中不可见）
+swift run macos ocr --app "钉钉" --query "综合"
+```
+
+**预期：** 返回弹框中"综合"标签的文字和坐标，即使该元素在 `see`/`inspect` 中完全不可见。
+
+---
+
+### test_ocr_click_workflow
+
+**测试方法：** 完整 OCR → 点击工作流
+
+```bash
+# 1. OCR 找到目标文字坐标
+swift run macos ocr --app "钉钉" --query "何占争"
+# 假设返回 frame: {x: 342, y: 567, w: 42, h: 18}
+# 2. 计算中心点并点击
+swift run macos click --coords 363,576
+```
+
+**预期：** OCR 返回的坐标可直接用于 `click --coords` 精确点击目标。
+
+---
+
+### test_ocr_engine_recognize
+
+**测试方法：** `OCREngine.recognize(image:screenRect:)` 坐标转换
+
+**验证点：**
+- Vision 归一化坐标 (0-1, bottom-left origin) → 图像像素坐标 (top-left origin)
+- 当 `screenRect` 非 nil 时，正确缩放到屏幕坐标
+- Retina 显示器下 `image.width` 可能 ≠ `screenRect.width`，缩放因子正确处理
+
+---
+
+### test_ocr_engine_languages
+
+**测试方法：** 中英文混合 OCR
+
+```bash
+# 在含中英文混合内容的应用上测试
+swift run macos ocr --app "钉钉" --human | head -20
+```
+
+**预期：** 同时识别中文（如"消息"）和英文（如"StarRocks"）。`recognitionLanguages` 包含 `zh-Hans`/`zh-Hant`/`en-US`。
+
+---
+
+### test_capture_window_image
+
+**测试方法：** `ScreenCapture.captureWindowImage(pid:)` 返回值验证
+
+**验证点：**
+- 返回 `(image: CGImage, frame: CGRect)`
+- `frame` 为窗口在屏幕上的坐标（全局显示坐标系，原点左上角）
+- `image` 尺寸与 `frame` 一致或按 Retina 缩放
+
+---
+
 ## 测试汇总
 
-> 测试执行日期：2026-05-27 | 环境：arm64 macOS 26.3 (25D125) | 通过率：38/38 (100%) — Bug 全部修复后
+> 测试执行日期：2026-05-27 | 环境：arm64 macOS 26.3 (25D125) | 通过率：47/47 (100%) — Bug 全部修复后，含 OCR 新增测试
 
 | 源文件 | 测试方法 | 测试的代码路径 | 结果 | 备注 |
 |--------|---------|--------------|------|------|
@@ -707,6 +1067,15 @@ swift run macos click 2>&1
 | `Core/Permissions.swift` | test_permissions_check | `ensureAccessibility()` | ✅ | 已授权环境 |
 | `Core/Output.swift` | test_output_json | `printCodable()` | ✅ | |
 | `Core/Output.swift` | test_output_error | `error()` → stderr | ✅ | |
+| `Commands/OcrCommand.swift` | test_ocr_app_human | `run()` → `captureWindowImage()` + `OCREngine.recognize()` + human 输出 | ✅ | 需屏幕录制权限 |
+| `Commands/OcrCommand.swift` | test_ocr_app_json | `run()` → `OcrResult` JSON 输出（含 count/elements） | ✅ | |
+| `Commands/OcrCommand.swift` | test_ocr_query | `run()` → OCR + `filterResults()` 按文字过滤 | ✅ | |
+| `Commands/OcrCommand.swift` | test_ocr_region | `run()` → `captureRegion()` + `recognize()` + 区域坐标映射 | ✅ | |
+| `Commands/OcrCommand.swift` | test_ocr_electron_popup | 打开 Electron 弹框 → `ocr --query` → 识别 AX 不可见内容 | ✅ | 核心场景：AX 树无法发现的弹框 |
+| `Commands/OcrCommand.swift` | test_ocr_click_workflow | `ocr --query "X"` → 获取坐标 → `click --coords` 点击 | ✅ | 完整 OCR→点击工作流 |
+| `Core/OCREngine.swift` | test_ocr_engine_recognize | `recognize(image:screenRect:)` 坐标转换正确性 | ✅ | Vision 归一化→屏幕坐标 |
+| `Core/OCREngine.swift` | test_ocr_engine_languages | 中英文混合识别 | ✅ | zh-Hans/zh-Hant/en-US |
+| `Core/ScreenCapture.swift` | test_capture_window_image | `captureWindowImage()` 返回 (CGImage, CGRect) | ✅ | OPT-004 新增方法 |
 
 ### 已知问题
 
