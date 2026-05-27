@@ -16,17 +16,26 @@ struct SeeCommand: AsyncParsableCommand {
     @Option(name: .long, help: "AX 树最大遍历深度（默认 10）")
     var maxDepth: Int = 10
 
+    @Flag(name: .long, help: "包含 Web 视图内容（AXWebArea 子元素）")
+    var webContent = false
+
+    @Flag(name: .long, help: "收集所有元素（不过滤角色）")
+    var all = false
+
     @Flag(name: .long, help: "人类可读格式输出")
     var human = false
 
     func run() async throws {
         try Permissions.ensureAccessibility()
-        let engine = AccessibilityEngine(maxDepth: maxDepth)
+        let mode: AccessibilityEngine.DiscoverMode = all ? .all : (webContent ? .webContent : .interactive)
+        let limit = (all || webContent) ? max(maxDepth, 15) : maxDepth
+        let maxEls = all ? 5000 : (webContent ? 2000 : 500)
+        let engine = AccessibilityEngine(maxDepth: limit, maxElements: maxEls)
         guard let pid = (app.flatMap { engine.findApp(name: $0) } ?? engine.frontmostApp()) else {
             Output.error("应用未找到: \(app ?? "frontmost")")
             throw ExitCode.failure
         }
-        let elements = engine.discoverElements(pid: pid)
+        let elements = engine.discoverElements(pid: pid, mode: mode)
         let appName = app ?? NSWorkspace.shared.frontmostApplication?.localizedName ?? "unknown"
 
         if let path = screenshot {

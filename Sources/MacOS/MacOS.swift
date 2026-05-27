@@ -16,6 +16,7 @@ struct MacOS: AsyncParsableCommand {
             WindowCommand.self,
             MenuCommand.self,
             ClipboardCommand.self,
+            OcrCommand.self,
         ]
     )
 }

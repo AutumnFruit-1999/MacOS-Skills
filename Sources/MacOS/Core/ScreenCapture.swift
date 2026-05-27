@@ -22,6 +22,11 @@ final class ScreenCapture: @unchecked Sendable {
     }
 
     static func captureWindow(pid: pid_t, saveTo path: String) async throws {
+        let (image, _) = try await captureWindowImage(pid: pid)
+        try saveImage(image, to: path)
+    }
+
+    static func captureWindowImage(pid: pid_t) async throws -> (image: CGImage, frame: CGRect) {
         ensureCGSConnection()
         let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
         guard let display = content.displays.first else { throw CaptureError.noDisplay }
@@ -35,7 +40,7 @@ final class ScreenCapture: @unchecked Sendable {
         config.pixelFormat = kCVPixelFormatType_32BGRA
         config.shouldBeOpaque = true
         let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
-        try saveImage(image, to: path)
+        return (image, window.frame)
     }
 
     private static func saveImage(_ image: CGImage, to path: String) throws {
