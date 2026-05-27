@@ -341,3 +341,77 @@ file /tmp/test-cursor.png
 swift run macos see --screenshot /tmp/test-screen.png
 file /tmp/test-screen.png
 ```
+
+---
+
+## BUG-004: 非前台应用元素发现不完整
+
+### 状态
+
+- **优先级：** P3
+- **状态：** Open（已知限制）
+- **发现日期：** 2026-05-27
+- **影响命令：** `see`
+
+### 复现步骤
+
+1. 微信窗口不在前台（被其他应用覆盖或最小化）
+2. 执行 see 命令：
+   ```bash
+   swift run macos see --app 微信
+   ```
+3. **实际结果：** 只发现 1 个元素（T1 - AXTextField）
+4. 将微信切到前台后再执行相同命令：
+   ```bash
+   swift run macos app --action focus --name 微信
+   swift run macos see --app 微信
+   ```
+5. **实际结果：** 发现 4 个元素（B1, B2, B3, T1）
+
+### 根本原因分析
+
+这是 macOS Accessibility API 的固有行为：
+
+- 非前台窗口的 AX 树不完整（窗口控制按钮等元素未暴露）
+- macOS 出于性能考虑，对后台窗口延迟加载 AX 元素
+- 窗口控制按钮（关闭/最小化/缩放）只有窗口处于活跃状态时才在 AX 树中可见
+
+### 修复方案
+
+**方案 A（推荐）：** 在 `see` 命令中自动 focus 目标应用后再遍历
+
+```swift
+// Sources/MacOS/Commands/SeeCommand.swift
+func run() async throws {
+    try Permissions.ensureAccessibility()
+    let engine = AccessibilityEngine(maxDepth: maxDepth)
+    guard let pid = ... else { ... }
+    // 自动聚焦确保 AX 树完整
+    if let runningApp = NSWorkspace.shared.runningApplications.first(where: { $0.processIdentifier == pid }) {
+        runningApp.activate()
+        usleep(300_000) // 等待 AX 树更新
+    }
+    let elements = engine.discoverElements(pid: pid)
+    ...
+}
+```
+
+**方案 B：** 不自动 focus，在文档中注明 "建议先 focus 再 see" 的最佳实践
+
+### 涉及文件
+
+| 文件 | 方法 | 说明 |
+|------|------|------|
+| `Sources/MacOS/Commands/SeeCommand.swift` | `run()` | 可在发现元素前自动 focus |
+| `SKILL.md` | 使用指南 | 注明最佳实践 |
+
+### 测试验证
+
+```bash
+# 不聚焦直接 see（可能不完整）
+swift run macos see --app 微信 --human
+
+# 先聚焦再 see（完整）
+swift run macos app --action focus --name 微信
+swift run macos see --app 微信 --human
+```

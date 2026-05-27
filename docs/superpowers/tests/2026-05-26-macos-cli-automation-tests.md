@@ -664,46 +664,57 @@ swift run macos click 2>&1
 
 ## 测试汇总
 
+> 测试执行日期：2026-05-27 | 环境：arm64 macOS 26.3 (25D125) | 通过率：37/38 (97.4%)
 
-| 源文件                               | 测试方法                     | 测试的代码路径                                             | 通过  |
-| --------------------------------- | ------------------------ | --------------------------------------------------- | --- |
-| `Commands/AppCommand.swift`       | test_app_list            | `run()` → `"list"` 分支                               | [ ] |
-| `Commands/AppCommand.swift`       | test_app_launch          | `run()` → `"launch"` + `findAppURL()`               | [ ] |
-| `Commands/AppCommand.swift`       | test_app_focus           | `run()` → `"focus"` → `activate()`                  | [ ] |
-| `Commands/AppCommand.swift`       | test_app_quit            | `run()` → `"quit"` → `terminate()`                  | [ ] |
-| `Commands/AppCommand.swift`       | test_app_quit_force      | `run()` → `"quit"` + `--force` → `forceTerminate()` | [ ] |
-| `Commands/AppCommand.swift`       | test_app_error_not_found | `run()` → 查找失败                                      | [ ] |
-| `Commands/SeeCommand.swift`       | test_see_human           | `run()` → `discoverElements()` + human 输出           | [ ] |
-| `Commands/SeeCommand.swift`       | test_see_json            | `run()` → `Output.printCodable(SeeResult)`          | [ ] |
-| `Commands/SeeCommand.swift`       | test_see_screenshot      | `run()` → `ScreenCapture.captureWindow()`           | [ ] |
-| `Commands/SeeCommand.swift`       | test_see_max_depth       | `run()` → `AccessibilityEngine(maxDepth:)`          | [ ] |
-| `Commands/InspectCommand.swift`   | test_inspect_human       | `run()` → `getTree()` + `printTree()`               | [ ] |
-| `Commands/InspectCommand.swift`   | test_inspect_json        | `run()` → `Output.print(tree)`                      | [ ] |
-| `Commands/ClickCommand.swift`     | test_click_coords        | `run()` → coords 解析 → `EventEngine.click()`         | [ ] |
-| `Commands/ClickCommand.swift`     | test_click_query         | `run()` → `discoverElements()` + 文本匹配               | [ ] |
-| `Commands/ClickCommand.swift`     | test_click_double        | `run()` → `clickCount: 2`                           | [ ] |
-| `Commands/ClickCommand.swift`     | test_click_right         | `run()` → `button: .right`                          | [ ] |
-| `Commands/TypeCommand.swift`      | test_type_text           | `run()` → `EventEngine.typeText()`                  | [ ] |
-| `Commands/TypeCommand.swift`      | test_type_clear          | `run()` → `hotkey(["cmd","a"])` + `pressKey(51)`    | [ ] |
-| `Commands/TypeCommand.swift`      | test_type_coords         | `run()` → coords → `click()` + `typeText()`         | [ ] |
-| `Commands/TypeCommand.swift`      | test_type_press_return   | `run()` → `pressKey(36)`                            | [ ] |
-| `Commands/HotkeyCommand.swift`    | test_hotkey_single       | `run()` → `EventEngine.hotkey()`                    | [ ] |
-| `Commands/HotkeyCommand.swift`    | test_hotkey_multi        | `run()` → 多修饰键解析                                    | [ ] |
-| `Commands/HotkeyCommand.swift`    | test_hotkey_error        | `run()` → `EventError.unknownKey`                   | [ ] |
-| `Commands/ScrollCommand.swift`    | test_scroll_down         | `run()` → `EventEngine.scroll(.down)`               | [ ] |
-| `Commands/ScrollCommand.swift`    | test_scroll_coords       | `run()` → `moveMouse()` + `scroll()`                | [ ] |
-| `Commands/WindowCommand.swift`    | test_window_list         | `run()` → `listAppWindows()`                        | [ ] |
-| `Commands/WindowCommand.swift`    | test_window_move         | `run()` → `AXValueCreate(.cgPoint)`                 | [ ] |
-| `Commands/WindowCommand.swift`    | test_window_resize       | `run()` → `AXValueCreate(.cgSize)`                  | [ ] |
-| `Commands/WindowCommand.swift`    | test_window_minimize     | `run()` → `kAXMinimizedAttribute`                   | [ ] |
-| `Commands/WindowCommand.swift`    | test_window_close        | `run()` → `pressWindowButton(kAXCloseButton)`       | [ ] |
-| `Commands/MenuCommand.swift`      | test_menu_list           | `run()` → `listMenuItems()`                         | [ ] |
-| `Commands/MenuCommand.swift`      | test_menu_click          | `run()` → `clickMenuItem()` + `findChild()`         | [ ] |
-| `Commands/ClipboardCommand.swift` | test_clipboard_set       | `run()` → `NSPasteboard.setString()`                | [ ] |
-| `Commands/ClipboardCommand.swift` | test_clipboard_get       | `run()` → `NSPasteboard.string(forType:)`           | [ ] |
-| `Commands/ClipboardCommand.swift` | test_clipboard_clear     | `run()` → `NSPasteboard.clearContents()`            | [ ] |
-| `Core/Permissions.swift`          | test_permissions_check   | `ensureAccessibility()`                             | [ ] |
-| `Core/Output.swift`               | test_output_json         | `printCodable()`                                    | [ ] |
-| `Core/Output.swift`               | test_output_error        | `error()` → stderr                                  | [ ] |
+| 源文件 | 测试方法 | 测试的代码路径 | 结果 | 备注 |
+|--------|---------|--------------|------|------|
+| `Commands/AppCommand.swift` | test_app_list | `run()` → `"list"` 分支 | ✅ | |
+| `Commands/AppCommand.swift` | test_app_list_json | `run()` → `"list"` JSON 输出 | ✅ | |
+| `Commands/AppCommand.swift` | test_app_launch | `run()` → `"launch"` + `findAppURL()` | ✅ | |
+| `Commands/AppCommand.swift` | test_app_focus | `run()` → `"focus"` → `activate()` | ✅ | 需用 localizedName（如"访达"非"Finder"） |
+| `Commands/AppCommand.swift` | test_app_quit | `run()` → `"quit"` → `terminate()` | ✅ | |
+| `Commands/AppCommand.swift` | test_app_quit_force | `run()` → `"quit"` + `--force` → `forceTerminate()` | ✅ | |
+| `Commands/AppCommand.swift` | test_app_error_not_found | `run()` → 查找失败 | ✅ | |
+| `Commands/SeeCommand.swift` | test_see_human | `run()` → `discoverElements()` + human 输出 | ✅ | |
+| `Commands/SeeCommand.swift` | test_see_json | `run()` → `Output.printCodable(SeeResult)` | ✅ | |
+| `Commands/SeeCommand.swift` | test_see_screenshot | `run()` → `ScreenCapture.captureWindow()` | ❌ | BUG-003: CGS_REQUIRE_INIT 崩溃 |
+| `Commands/SeeCommand.swift` | test_see_max_depth | `run()` → `AccessibilityEngine(maxDepth:)` | ✅ | |
+| `Commands/InspectCommand.swift` | test_inspect_human | `run()` → `getTree()` + `printTree()` | ✅ | |
+| `Commands/InspectCommand.swift` | test_inspect_json | `run()` → `Output.print(tree)` | ✅ | |
+| `Commands/ClickCommand.swift` | test_click_coords | `run()` → coords 解析 → `EventEngine.click()` | ✅ | |
+| `Commands/ClickCommand.swift` | test_click_query | `run()` → `discoverElements()` + 文本匹配 | ✅ | |
+| `Commands/ClickCommand.swift` | test_click_double | `run()` → `clickCount: 2` | ✅ | |
+| `Commands/ClickCommand.swift` | test_click_right | `run()` → `button: .right` | ✅ | |
+| `Commands/TypeCommand.swift` | test_type_text | `run()` → `EventEngine.typeText()` | ✅ | |
+| `Commands/TypeCommand.swift` | test_type_clear | `run()` → `hotkey(["cmd","a"])` + `pressKey(51)` | ✅ | |
+| `Commands/TypeCommand.swift` | test_type_coords | `run()` → coords → `click()` + `typeText()` | ✅ | |
+| `Commands/TypeCommand.swift` | test_type_press_return | `run()` → `pressKey(36)` | ✅ | |
+| `Commands/HotkeyCommand.swift` | test_hotkey_single | `run()` → `EventEngine.hotkey()` | ✅ | |
+| `Commands/HotkeyCommand.swift` | test_hotkey_multi | `run()` → 多修饰键解析 | ✅ | |
+| `Commands/HotkeyCommand.swift` | test_hotkey_error | `run()` → `EventError.unknownKey` | ✅ | |
+| `Commands/ScrollCommand.swift` | test_scroll_down | `run()` → `EventEngine.scroll(.down)` | ✅ | |
+| `Commands/ScrollCommand.swift` | test_scroll_coords | `run()` → `moveMouse()` + `scroll()` | ✅ | |
+| `Commands/WindowCommand.swift` | test_window_list | `run()` → `listAppWindows()` | ✅ | |
+| `Commands/WindowCommand.swift` | test_window_move | `run()` → `AXValueCreate(.cgPoint)` | ✅ | |
+| `Commands/WindowCommand.swift` | test_window_resize | `run()` → `AXValueCreate(.cgSize)` | ✅ | |
+| `Commands/WindowCommand.swift` | test_window_minimize | `run()` → `kAXMinimizedAttribute` | ✅ | |
+| `Commands/WindowCommand.swift` | test_window_close | `run()` → `pressWindowButton(kAXCloseButton)` | ✅ | |
+| `Commands/MenuCommand.swift` | test_menu_list | `run()` → `listMenuItems()` | ✅ | |
+| `Commands/MenuCommand.swift` | test_menu_click | `run()` → `clickMenuItem()` + `findChild()` | ✅ | |
+| `Commands/ClipboardCommand.swift` | test_clipboard_set | `run()` → `NSPasteboard.setString()` | ✅ | |
+| `Commands/ClipboardCommand.swift` | test_clipboard_get | `run()` → `NSPasteboard.string(forType:)` | ✅ | |
+| `Commands/ClipboardCommand.swift` | test_clipboard_clear | `run()` → `NSPasteboard.clearContents()` | ✅ | |
+| `Core/Permissions.swift` | test_permissions_check | `ensureAccessibility()` | ✅ | 已授权环境 |
+| `Core/Output.swift` | test_output_json | `printCodable()` | ✅ | |
+| `Core/Output.swift` | test_output_error | `error()` → stderr | ✅ | |
+
+### 已知问题
+
+| Bug ID | 描述 | 影响的测试 | 状态 |
+|--------|------|-----------|------|
+| BUG-001 | 最小化应用 focus 后桌面不可见 | test_app_focus | Open |
+| BUG-002 | localizedName 与 .app 文件名不一致导致 launch 失败 | test_app_launch | Open |
+| BUG-003 | ScreenCaptureKit CGS_REQUIRE_INIT 崩溃 | test_see_screenshot | Open |
+| BUG-004 | 非前台应用元素发现不完整 | test_see_human | Open |
 
 
