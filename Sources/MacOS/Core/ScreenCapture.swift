@@ -4,7 +4,12 @@ import AppKit
 @available(macOS 14.0, *)
 final class ScreenCapture: @unchecked Sendable {
 
+    private static func ensureCGSConnection() {
+        let _ = NSApplication.shared
+    }
+
     static func captureScreen(saveTo path: String) async throws {
+        ensureCGSConnection()
         let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
         guard let display = content.displays.first else { throw CaptureError.noDisplay }
         let filter = SCContentFilter(display: display, excludingWindows: [])
@@ -17,11 +22,13 @@ final class ScreenCapture: @unchecked Sendable {
     }
 
     static func captureWindow(pid: pid_t, saveTo path: String) async throws {
+        ensureCGSConnection()
         let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+        guard let display = content.displays.first else { throw CaptureError.noDisplay }
         guard let window = content.windows.first(where: { $0.owningApplication?.processID == pid }) else {
             throw CaptureError.windowNotFound
         }
-        let filter = SCContentFilter(desktopIndependentWindow: window)
+        let filter = SCContentFilter(display: display, including: [window])
         let config = SCStreamConfiguration()
         config.width = Int(window.frame.width)
         config.height = Int(window.frame.height)
