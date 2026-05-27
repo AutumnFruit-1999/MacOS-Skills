@@ -1,5 +1,6 @@
 import ArgumentParser
 import AppKit
+import ApplicationServices
 
 struct AppCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(commandName: "app", abstract: "管理应用（启动/退出/聚焦/列表）")
@@ -56,6 +57,18 @@ struct AppCommand: AsyncParsableCommand {
                 throw ExitCode.failure
             }
             app.activate()
+            let appElement = AXUIElementCreateApplication(app.processIdentifier)
+            var windowsRef: AnyObject?
+            AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsRef)
+            if let windows = windowsRef as? [AXUIElement] {
+                for window in windows {
+                    var minimizedRef: AnyObject?
+                    AXUIElementCopyAttributeValue(window, kAXMinimizedAttribute as CFString, &minimizedRef)
+                    if let minimized = minimizedRef as? Bool, minimized {
+                        AXUIElementSetAttributeValue(window, kAXMinimizedAttribute as CFString, false as CFBoolean)
+                    }
+                }
+            }
             Output.printCodable(AppResult(action: "focus", app: appName, pid: app.processIdentifier))
 
         case "list":
