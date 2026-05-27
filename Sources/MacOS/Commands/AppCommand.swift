@@ -106,6 +106,21 @@ struct AppCommand: AsyncParsableCommand {
             let url = URL(fileURLWithPath: "\(dir)/\(name).app")
             if FileManager.default.fileExists(atPath: url.path) { return url }
         }
+        if let running = NSWorkspace.shared.runningApplications.first(where: { $0.localizedName == name }) {
+            return running.bundleURL
+        }
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/mdfind")
+        task.arguments = ["kMDItemDisplayName == '\(name)' && kMDItemContentType == 'com.apple.application-bundle'"]
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        try? task.run()
+        task.waitUntilExit()
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        if let output = String(data: data, encoding: .utf8),
+           let firstLine = output.split(separator: "\n").first {
+            return URL(fileURLWithPath: String(firstLine))
+        }
         return nil
     }
 }
