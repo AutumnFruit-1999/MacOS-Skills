@@ -78,32 +78,6 @@ macos see --app "钉钉" --all           # 全量：所有元素不过滤（~883
 }
 ```
 
-## 元素精准定位
-
-所有坐标为**屏幕全局坐标**（原点：主屏幕左上角）。`see` 和 `inspect` 返回的 `frame` 格式为 `{x, y, w, h}`，x/y 是元素左上角。
-
-**点击坐标 = 元素中心点：**
-```
-centerX = frame.x + frame.w / 2
-centerY = frame.y + frame.h / 2
-```
-
-`see` 返回每个 UI 元素的精确 `frame` 坐标，是 macOS Accessibility API 提供的系统级可信数据：
-
-```bash
-macos see --app Safari
-# 返回: {"id":"T1","role":"AXTextField","frame":{"x":80,"y":52,"w":600,"h":28}}
-# 计算中心: x=80+600/2=380, y=52+28/2=66
-macos click --coords 380,66
-```
-
-`inspect --detailed` 可查看更深层嵌套元素的坐标：
-```bash
-macos inspect --app "钉钉" --max-depth 12 --detailed --human
-# 输出: AXStaticText val="邱沛鑫" [342,812 44x21]
-# 中心: x=342+44/2=364, y=812+21/2=822
-```
-
 ## 常见场景
 
 ### 打开应用并导航
