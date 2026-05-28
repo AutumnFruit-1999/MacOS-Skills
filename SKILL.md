@@ -78,23 +78,62 @@ macos see --app "钉钉" --all           # 全量：所有元素不过滤（~883
 }
 ```
 
-## 操作模式
+## 元素定位与坐标计算
 
-### 坐标点击（从 see 获取坐标）
+所有坐标为**屏幕全局坐标**（原点：主屏幕左上角）。`frame` 格式为 `{x, y, width, height}`，x/y 是元素左上角。
+
+**点击坐标 = 元素中心点：**
+```
+centerX = frame.x + frame.width / 2
+centerY = frame.y + frame.height / 2
+```
+
+### 方式 1：Accessibility API — see/inspect（最精准）
+
+`see` 返回每个 UI 元素的精确 `frame` 坐标，是系统级的可信数据：
 
 ```bash
 macos see --app Safari
-# 从返回 JSON 中看到 T1 的 frame: {x:80, y:52, w:600, h:28}
+# 返回: {"id":"T1","role":"AXTextField","frame":{"x":80,"y":52,"w":600,"h":28}}
 # 计算中心: x=80+600/2=380, y=52+28/2=66
 macos click --coords 380,66
-macos type --text "https://example.com" --press-return
 ```
 
-### Query 点击（按文本查找）
+`inspect --detailed` 查看更深层元素的坐标：
+```bash
+macos inspect --app "钉钉" --max-depth 12 --detailed --human
+# 输出: AXStaticText val="邱沛鑫" [342,812 44x21]
+# 中心: x=342+44/2=364, y=812+21/2=822
+```
+
+### 方式 2：OCR 文字识别（Electron 弹框适用）
+
+`ocr` 通过截图 + Vision OCR 返回文字的屏幕坐标，适用于 AX 树不可见的 Electron 弹框：
+
+```bash
+macos ocr --app "钉钉" --query "确定"
+# 返回: {"text":"确定","frame":{"x":895,"y":496,"w":33,"h":18}}
+# 中心: x=895+33/2=911, y=496+18/2=505
+macos click --coords 911,505
+```
+
+### 方式 3：Query 点击（按文本自动查找）
+
+`click --query` 自动在 AX 树中搜索包含指定文本的元素并点击其中心：
 
 ```bash
 macos click --query "OK" --app Safari
 ```
+
+### 定位方式选择
+
+| 场景 | 推荐方式 |
+|------|----------|
+| 原生 UI 元素（按钮、输入框） | `see` — AX 坐标最精确 |
+| Electron Web 内容 | `see --web-content` 或 `see --all` |
+| Electron 弹框/浮层（AX 不可见） | `ocr --query` |
+| 指定应用窗口内区域 | `ocr --app "Name" --region "x,y,w,h"` |
+| 无文字图标按钮 | `see --screenshot` 截图查看后记录坐标 |
 
 ## 常见场景
 
