@@ -167,13 +167,31 @@ macos inspect --app "钉钉" --max-depth 10 --detailed --human
 
 通过 `inspect --detailed` 在 AX 树中搜索目标元素，获取精确坐标后用 `click --coords` 交互。
 
+## 文件发送（推荐策略：复制粘贴优先）
+
+向 IM 应用（钉钉、微信、飞书等）发送文件时，**优先使用剪贴板复制 + Cmd+V 粘贴**，仅当粘贴不可行时才回退到鼠标点击文件按钮。
+
+```bash
+# 推荐方式：剪贴板复制文件 + 粘贴
+macos clipboard --action set --file "/path/to/file.xlsx"
+macos app --action focus --name "钉钉"
+macos click --coords <输入框坐标>
+macos hotkey --keys cmd,v
+# → 触发应用的文件发送确认弹窗
+
+# 兜底方式：点击工具栏文件按钮（需要先识别按钮位置）
+macos see --screenshot /tmp/toolbar.png   # 截图辨认图标
+macos click --coords <文件按钮坐标>        # 打开文件选择器
+```
+
 ## 已知限制
 
 - **非前台应用元素不完整**：macOS Accessibility API 对非前台窗口只暴露部分元素。建议先 `app --action focus` 再 `see`
 - **Electron 应用 Web 浮层不可见**：Electron 应用（钉钉、VS Code 等）中的 CSS/HTML 弹窗/浮层（如搜索面板、下拉菜单、模态对话框）在 AX 树中完全不可见。这些浮层由 Chromium 渲染引擎绘制，不会暴露为 AX 元素。**应对策略**：使用 `ocr` 命令识别弹框中的文字和坐标，再用 `click --coords` 交互
-- **Electron 搜索框不接收键盘输入**：某些 Electron 应用的搜索框是 Web 渲染的 `AXStaticText`（非 `AXTextField`），占位文本通过 `kAXPlaceholderValueAttribute` 可读取，但无法通过 AX API 设置值或输入文字。**应对策略**：通过 AX 树搜索目标元素的文字内容（`inspect --max-depth 12 --detailed | grep "目标"`），获取坐标后直接点击
+- **Electron 搜索框无法通过 AX API 设置值**：某些 Electron 应用的搜索框是 Web 渲染的 `AXStaticText`（非 `AXTextField`），无法通过 AX API 编程设置值。但 `type` 命令通过 CGEvent 键盘模拟可以正常输入文字（已在钉钉搜索框验证）。**应对策略**：先 `click --coords` 点击搜索框聚焦，再 `type --text` 输入内容
 - **Electron 应用元素发现**：Web 视图内元素需要 `--web-content` 或 `--all` 参数才能发现；即使如此，部分深层嵌套元素可能仍不可见
 - **应用名必须使用 localizedName**：中文系统下访达是"访达"非"Finder"，可通过 `app --action list` 查看正确名称
+- **图标按钮无法识别**：Electron 应用工具栏的图形图标无 AX 标签、OCR 也无法识别。**应对策略**：优先使用剪贴板复制粘贴代替点击图标；必须点击时通过截图辨认后记录坐标
 
 ## 详细参考
 

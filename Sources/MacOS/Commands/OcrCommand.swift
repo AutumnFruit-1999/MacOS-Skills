@@ -7,7 +7,7 @@ struct OcrCommand: AsyncParsableCommand {
     @Option(name: .long, help: "目标应用名（默认前台应用）")
     var app: String?
 
-    @Option(name: .long, help: "屏幕区域 'x,y,w,h'（与 --app 互斥）")
+    @Option(name: .long, help: "区域 'x,y,w,h'（单独使用=屏幕绝对坐标；配合 --app=窗口相对坐标）")
     var region: String?
 
     @Option(name: .long, help: "按文字内容过滤（包含匹配）")
@@ -17,14 +17,11 @@ struct OcrCommand: AsyncParsableCommand {
     var human = false
 
     func run() async throws {
-        if region != nil && app != nil {
-            Output.error("--app 和 --region 不能同时使用")
-            throw ExitCode.failure
-        }
-
         let elements: [OCRTextElement]
 
-        if let regionStr = region {
+        if let regionStr = region, app != nil {
+            elements = try await ocrAppRegion(regionStr)
+        } else if let regionStr = region {
             elements = try await ocrRegion(regionStr)
         } else {
             elements = try await ocrApp()
@@ -50,15 +47,67 @@ struct OcrCommand: AsyncParsableCommand {
         }
     }
 
-    private func ocrRegion(_ regionStr: String) async throws -> [OCRTextElement] {
-        let parts = regionStr.split(separator: ",").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
-        guard parts.count == 4 else {
+    private func ocrAppRegion(_ regionStr: String) async throws -> [OCRTextElement] {
+        let parts = parseRegion(regionStr)
+        guard let parts = parts else {
             Output.error("区域格式错误，使用 'x,y,w,h'")
             throw ExitCode.failure
         }
-        let rect = CGRect(x: parts[0], y: parts[1], width: parts[2], height: parts[3])
+
+        let engine = AccessibilityEngine()
+        guard let pid = (app.flatMap { engine.findApp(name: $0) } ?? engine.frontmostApp()) else {
+            Output.error("应用未找到: \(app ?? "frontmost")")
+            throw ExitCode.failure
+        }
+
+        if #available(macOS 14.0, *) {
+            let (image, windowFrame) = try await ScreenCapture.captureWindowImage(pid: pid)
+
+            let imgW = CGFloat(image.width)
+            let imgH = CGFloat(image.height)
+            let scaleX = imgW / windowFrame.width
+            let scaleY = imgH / windowFrame.height
+
+            let cropX = Int(parts.x * scaleX)
+            let cropY = Int(parts.y * scaleY)
+            let cropW = Int(parts.w * scaleX)
+            let cropH = Int(parts.h * scaleY)
+
+            let cropRect = CGRect(x: cropX, y: cropY, width: cropW, height: cropH)
+                .intersection(CGRect(x: 0, y: 0, width: Int(imgW), height: Int(imgH)))
+
+            guard !cropRect.isEmpty, let croppedImage = image.cropping(to: cropRect) else {
+                Output.error("裁剪区域超出窗口范围")
+                throw ExitCode.failure
+            }
+
+            let screenRect = CGRect(
+                x: windowFrame.origin.x + parts.x,
+                y: windowFrame.origin.y + parts.y,
+                width: parts.w,
+                height: parts.h
+            )
+            return try OCREngine.recognize(image: croppedImage, screenRect: screenRect)
+        } else {
+            Output.error("OCR 需要 macOS 14.0+")
+            throw ExitCode.failure
+        }
+    }
+
+    private func ocrRegion(_ regionStr: String) async throws -> [OCRTextElement] {
+        guard let parts = parseRegion(regionStr) else {
+            Output.error("区域格式错误，使用 'x,y,w,h'")
+            throw ExitCode.failure
+        }
+        let rect = CGRect(x: parts.x, y: parts.y, width: parts.w, height: parts.h)
         let image = try await OCREngine.captureRegion(rect)
         return try OCREngine.recognize(image: image, screenRect: rect)
+    }
+
+    private func parseRegion(_ regionStr: String) -> (x: Double, y: Double, w: Double, h: Double)? {
+        let parts = regionStr.split(separator: ",").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+        guard parts.count == 4 else { return nil }
+        return (x: parts[0], y: parts[1], w: parts[2], h: parts[3])
     }
 
     private func filterResults(_ elements: [OCRTextElement]) -> [OCRTextElement] {

@@ -163,13 +163,56 @@ macos menu --action <list|click> --app <name> [--path <"Menu > Item">]
 
 ## macos clipboard
 
-读写系统剪贴板。
+读写系统剪贴板，支持文本和文件。
 
 ```
-macos clipboard --action <get|set|clear> [--text <string>]
+macos clipboard --action <get|set|clear> [--text <string>] [--file <path>]
 ```
 
 | 参数 | 说明 |
 |------|------|
 | `--action` | get/set/clear |
-| `--text` | 要设置的文本（set 用） |
+| `--text` | 要设置的文本（set 用，与 `--file` 互斥） |
+| `--file` | 要复制到剪贴板的文件路径（set 用，与 `--text` 互斥） |
+
+`get` 返回结果中 `type` 字段区分内容类型：`"text"` 或 `"file"`。
+
+文件模式示例：
+```bash
+macos clipboard --action set --file "/Users/user/Desktop/report.xlsx"
+# → {"action":"set","content":"...","type":"file","path":"/Users/user/Desktop/report.xlsx","size":8192}
+```
+
+---
+
+## macos ocr
+
+OCR 识别屏幕文字（基于 macOS Vision 框架）。
+
+```
+macos ocr [--app <name>] [--region <x,y,w,h>] [--query <text>] [--human]
+```
+
+| 参数 | 说明 |
+|------|------|
+| `--app` | 目标应用名（默认前台应用） |
+| `--region` | 区域坐标 `x,y,w,h`（单独使用=屏幕绝对坐标；配合 `--app`=窗口相对坐标） |
+| `--query` | 按文字内容过滤（包含匹配） |
+| `--human` | 人类可读格式输出 |
+
+`--app` 和 `--region` 可以同时使用：`--region` 此时为窗口内相对坐标，OCR 仅扫描指定区域，返回结果坐标为屏幕绝对坐标。
+
+示例：
+```bash
+# 识别应用窗口所有文字
+macos ocr --app "钉钉" --human
+
+# 按关键词搜索
+macos ocr --app "钉钉" --query "邱沛鑫"
+
+# 识别屏幕指定区域
+macos ocr --region "600,80,400,300" --human
+
+# 识别应用窗口内指定区域（窗口相对坐标）
+macos ocr --app "钉钉" --region "0,0,400,100"
+```
